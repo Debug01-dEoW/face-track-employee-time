@@ -1,5 +1,5 @@
 
-import { useRef } from "react";
+import { useEffect } from "react";
 import { User } from "lucide-react";
 
 interface CameraViewProps {
@@ -9,6 +9,18 @@ interface CameraViewProps {
 }
 
 const CameraView = ({ videoRef, isCapturing, currentDirection }: CameraViewProps) => {
+  useEffect(() => {
+    // Ensure video plays when loaded
+    const videoElement = videoRef.current;
+    if (videoElement) {
+      videoElement.onloadedmetadata = () => {
+        videoElement.play().catch(err => {
+          console.error("Error playing video:", err);
+        });
+      };
+    }
+  }, [videoRef]);
+
   return (
     <div className="relative rounded-md overflow-hidden bg-gray-100 aspect-video">
       {!isCapturing ? (
@@ -23,7 +35,8 @@ const CameraView = ({ videoRef, isCapturing, currentDirection }: CameraViewProps
           <video 
             ref={videoRef} 
             autoPlay 
-            playsInline 
+            playsInline
+            muted // Adding muted attribute to help with autoplay policies
             className="w-full h-auto"
           />
           <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-3 text-center">
