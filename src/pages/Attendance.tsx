@@ -150,7 +150,7 @@ const Attendance = () => {
                   </h3>
                   <Badge variant={
                     selectedDateAttendance.status === 'present' ? 'default' :
-                    selectedDateAttendance.status === 'late' ? 'warning' : 'destructive'
+                    selectedDateAttendance.status === 'late' ? 'secondary' : 'destructive'
                   }>
                     {selectedDateAttendance.status.charAt(0).toUpperCase() + selectedDateAttendance.status.slice(1)}
                   </Badge>
