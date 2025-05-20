@@ -130,13 +130,13 @@ const ManualAttendance = () => {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="mb-4">
+                <div className="mb-4 relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     placeholder="Search employees..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full"
-                    icon={<Search className="h-4 w-4" />}
+                    className="w-full pl-9"
                   />
                 </div>
                 
