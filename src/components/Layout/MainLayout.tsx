@@ -36,7 +36,7 @@ const MainLayout = () => {
   // Show loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
         <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -48,7 +48,7 @@ const MainLayout = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       <Header toggleSidebar={toggleSidebar} />
       
       <div className="flex flex-1">

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { User, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -12,7 +13,7 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
   const { user, logout } = useAuth();
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 h-16 flex items-center justify-between z-10">
+    <header className="bg-background border-b border-border px-4 h-16 flex items-center justify-between z-10">
       <div className="flex items-center">
         <Button onClick={toggleSidebar} variant="ghost" size="icon" className="lg:hidden">
           <svg
@@ -36,6 +37,7 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
       
       {user && (
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Button variant="ghost" size="sm" className="flex items-center gap-1">
             <User size={16} />
             <span className="hidden md:inline">{user.name}</span>
