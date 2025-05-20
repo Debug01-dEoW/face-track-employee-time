@@ -1,6 +1,6 @@
 
 import { NavLink } from "react-router-dom";
-import { Calendar, User, Users, Clock } from "lucide-react";
+import { Calendar, User, Users, Clock, PieChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -30,6 +30,12 @@ const Sidebar = ({ isOpen }: SidebarProps) => {
       path: "/attendance",
       icon: <Calendar className="w-5 h-5" />,
       access: ["employee", "admin"]
+    },
+    {
+      name: "Analytics",
+      path: "/analytics",
+      icon: <PieChart className="w-5 h-5" />,
+      access: ["admin"]
     },
     {
       name: "Employees",

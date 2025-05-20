@@ -1,80 +1,137 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar } from '@/components/ui/calendar';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { Badge } from '@/components/ui/badge';
+import { Clock } from 'lucide-react';
 
-// Mock data
+// Mock data for attendance
 const attendanceData = [
-  { date: '2025-05-15', checkIn: '09:05 AM', checkOut: '05:10 PM', status: 'present', hours: '8:05' },
-  { date: '2025-05-16', checkIn: '08:55 AM', checkOut: '05:00 PM', status: 'present', hours: '8:05' },
-  { date: '2025-05-17', checkIn: '09:20 AM', checkOut: '05:15 PM', status: 'late', hours: '7:55' },
-  { date: '2025-05-18', checkIn: null, checkOut: null, status: 'absent', hours: '0:00' },
-  { date: '2025-05-19', checkIn: '08:50 AM', checkOut: '05:05 PM', status: 'present', hours: '8:15' },
-  { date: '2025-05-20', checkIn: '09:00 AM', checkOut: null, status: 'present', hours: '--' },
+  { date: new Date(2025, 4, 1), status: 'present', checkIn: '08:52 AM', checkOut: '05:10 PM' },
+  { date: new Date(2025, 4, 2), status: 'present', checkIn: '08:45 AM', checkOut: '05:05 PM' },
+  { date: new Date(2025, 4, 3), status: 'late', checkIn: '09:15 AM', checkOut: '05:30 PM' },
+  { date: new Date(2025, 4, 6), status: 'present', checkIn: '08:50 AM', checkOut: '05:15 PM' },
+  { date: new Date(2025, 4, 7), status: 'present', checkIn: '08:55 AM', checkOut: '05:00 PM' },
+  { date: new Date(2025, 4, 8), status: 'absent', checkIn: '', checkOut: '' },
+  { date: new Date(2025, 4, 9), status: 'present', checkIn: '08:49 AM', checkOut: '05:05 PM' },
+  { date: new Date(2025, 4, 10), status: 'present', checkIn: '08:47 AM', checkOut: '05:10 PM' },
+  { date: new Date(2025, 4, 13), status: 'late', checkIn: '09:20 AM', checkOut: '05:35 PM' },
+  { date: new Date(2025, 4, 14), status: 'present', checkIn: '08:50 AM', checkOut: '05:15 PM' },
+  { date: new Date(2025, 4, 15), status: 'present', checkIn: '08:45 AM', checkOut: '05:05 PM' },
+  { date: new Date(2025, 4, 16), status: 'present', checkIn: '08:52 AM', checkOut: '05:20 PM' },
+  { date: new Date(2025, 4, 17), status: 'present', checkIn: '08:48 AM', checkOut: '05:10 PM' },
+];
+
+// Monthly summary statistics
+const monthlyStats = {
+  present: 10,
+  late: 2,
+  absent: 1,
+  totalWorkingDays: 13
+};
+
+// Chart data
+const chartData = [
+  { name: 'Week 1', onTime: 4, late: 1, absent: 0 },
+  { name: 'Week 2', onTime: 4, late: 0, absent: 1 },
+  { name: 'Week 3', onTime: 2, late: 1, absent: 0 },
+  { name: 'Week 4', onTime: 0, late: 0, absent: 0 },
 ];
 
 const Attendance = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   
-  // Find attendance data for selected date
-  const selectedDateString = date?.toISOString().split('T')[0];
-  const selectedAttendance = attendanceData.find(item => item.date === selectedDateString);
-  
-  // Highlight dates with attendance data
-  const getDayClassName = (day: Date) => {
-    const dateString = day.toISOString().split('T')[0];
-    const attendance = attendanceData.find(item => item.date === dateString);
+  // FIX: Convert the modifyDay function to a string or use a different component prop
+  const getDayClass = (day: Date): string => {
+    const found = attendanceData.find(
+      (item) => item.date.toDateString() === day.toDateString()
+    );
     
-    if (!attendance) return '';
+    if (!found) return "";
     
-    if (attendance.status === 'present') return 'bg-green-100 text-green-800 rounded-full';
-    if (attendance.status === 'late') return 'bg-amber-100 text-amber-800 rounded-full';
-    if (attendance.status === 'absent') return 'bg-red-100 text-red-800 rounded-full';
-    
-    return '';
+    switch (found.status) {
+      case 'present':
+        return "bg-green-100 text-green-800 rounded-full";
+      case 'late':
+        return "bg-amber-100 text-amber-800 rounded-full";
+      case 'absent':
+        return "bg-red-100 text-red-800 rounded-full";
+      default:
+        return "";
+    }
   };
-
+  
+  // Custom modifiers object
+  const modifiers = {
+    present: (date: Date) => {
+      return attendanceData.some(
+        (item) => item.date.toDateString() === date.toDateString() && item.status === 'present'
+      );
+    },
+    late: (date: Date) => {
+      return attendanceData.some(
+        (item) => item.date.toDateString() === date.toDateString() && item.status === 'late'
+      );
+    },
+    absent: (date: Date) => {
+      return attendanceData.some(
+        (item) => item.date.toDateString() === date.toDateString() && item.status === 'absent'
+      );
+    },
+  };
+  
+  // Custom modifiers styles
+  const modifiersStyles = {
+    present: { backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 'bold' },
+    late: { backgroundColor: '#fef3c7', color: '#92400e', fontWeight: 'bold' },
+    absent: { backgroundColor: '#fee2e2', color: '#b91c1c', fontWeight: 'bold' },
+  };
+  
+  // Find attendance for selected date
+  const selectedDateAttendance = attendanceData.find(
+    (item) => date && item.date.toDateString() === date.toDateString()
+  );
+  
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">My Attendance</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Attendance Records</h1>
         <p className="text-muted-foreground">
-          View and manage your attendance records
+          Track and monitor your attendance history
         </p>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Calendar</CardTitle>
-            <CardDescription>Select a date to view details</CardDescription>
+            <CardTitle>Attendance Calendar</CardTitle>
           </CardHeader>
           <CardContent>
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              className="rounded-md border"
-              classNames={{
-                day_today: "bg-brand-100 text-brand-700",
-                day_selected: "bg-brand-600 text-white hover:bg-brand-600 hover:text-white focus:bg-brand-600 focus:text-white",
-                day: (date) => getDayClassName(date),
-              }}
-            />
-            
-            <div className="mt-6 flex items-center justify-center gap-4 text-sm">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span>Present</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                <span>Late</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span>Absent</span>
+            <div className="p-1">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                className="rounded-md border"
+                modifiers={modifiers}
+                modifiersStyles={modifiersStyles}
+              />
+              
+              <div className="mt-4 flex items-center justify-center gap-4">
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-green-500 mr-1"></div>
+                  <span className="text-xs text-gray-600">Present</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-amber-500 mr-1"></div>
+                  <span className="text-xs text-gray-600">Late</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-red-500 mr-1"></div>
+                  <span className="text-xs text-gray-600">Absent</span>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -82,63 +139,112 @@ const Attendance = () => {
         
         <Card>
           <CardHeader>
-            <CardTitle>Attendance Details</CardTitle>
-            <CardDescription>
-              {selectedDateString || 'Select a date to view details'}
-            </CardDescription>
+            <CardTitle>Selected Date Details</CardTitle>
           </CardHeader>
           <CardContent>
-            {selectedAttendance ? (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <p className="text-sm text-gray-500 mb-1">Check In</p>
-                    <p className="text-lg font-medium">
-                      {selectedAttendance.checkIn || 'Not recorded'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <p className="text-sm text-gray-500 mb-1">Check Out</p>
-                    <p className="text-lg font-medium">
-                      {selectedAttendance.checkOut || 'Not recorded'}
-                    </p>
-                  </div>
+            {selectedDateAttendance ? (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium">
+                    {date?.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </h3>
+                  <Badge variant={
+                    selectedDateAttendance.status === 'present' ? 'default' :
+                    selectedDateAttendance.status === 'late' ? 'warning' : 'destructive'
+                  }>
+                    {selectedDateAttendance.status.charAt(0).toUpperCase() + selectedDateAttendance.status.slice(1)}
+                  </Badge>
                 </div>
                 
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <p className="text-sm text-gray-500 mb-1">Status</p>
-                  <div className="flex items-center">
-                    <span 
-                      className={`inline-block px-2 py-1 rounded text-sm font-medium ${
-                        selectedAttendance.status === 'present' ? 'bg-green-100 text-green-800' :
-                        selectedAttendance.status === 'late' ? 'bg-amber-100 text-amber-800' :
-                        'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {selectedAttendance.status.charAt(0).toUpperCase() + selectedAttendance.status.slice(1)}
-                    </span>
+                {selectedDateAttendance.status !== 'absent' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs font-medium text-gray-500">Check-in Time</div>
+                      <div className="mt-1 flex items-center">
+                        <Clock className="h-4 w-4 text-gray-500 mr-1" />
+                        <span className="text-lg font-bold">{selectedDateAttendance.checkIn}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs font-medium text-gray-500">Check-out Time</div>
+                      <div className="mt-1 flex items-center">
+                        <Clock className="h-4 w-4 text-gray-500 mr-1" />
+                        <span className="text-lg font-bold">{selectedDateAttendance.checkOut}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
                 
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <p className="text-sm text-gray-500 mb-1">Total Hours</p>
-                  <p className="text-lg font-medium">{selectedAttendance.hours}</p>
-                </div>
-                
-                {selectedAttendance.status === 'absent' && (
-                  <Button className="w-full bg-brand-600 hover:bg-brand-700">
-                    Request Leave Approval
-                  </Button>
+                {selectedDateAttendance.status === 'absent' && (
+                  <div className="py-8 text-center text-gray-500">
+                    No attendance record for this date
+                  </div>
                 )}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-64 text-center">
-                <p className="text-gray-500">Select a date from the calendar to view attendance details</p>
+              <div className="py-8 text-center text-gray-500">
+                {date ? 'No record found for selected date' : 'Please select a date'}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="rounded-lg border p-3">
+              <div className="text-xs font-medium text-gray-500">Working Days</div>
+              <div className="mt-1 text-2xl font-bold">{monthlyStats.totalWorkingDays}</div>
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="text-xs font-medium text-gray-500">Present</div>
+              <div className="mt-1 text-2xl font-bold text-green-600">{monthlyStats.present}</div>
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="text-xs font-medium text-gray-500">Late</div>
+              <div className="mt-1 text-2xl font-bold text-amber-600">{monthlyStats.late}</div>
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="text-xs font-medium text-gray-500">Absent</div>
+              <div className="mt-1 text-2xl font-bold text-red-600">{monthlyStats.absent}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Attendance Trends</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            <ChartContainer
+              config={{
+                onTime: { color: '#22c55e' },
+                late: { color: '#f59e0b' },
+                absent: { color: '#ef4444' },
+              }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip content={<ChartTooltipContent />} />
+                  <Legend />
+                  <Bar dataKey="onTime" name="On Time" fill="var(--color-onTime)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="late" name="Late" fill="var(--color-late)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="absent" name="Absent" fill="var(--color-absent)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

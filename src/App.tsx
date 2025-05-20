@@ -15,6 +15,7 @@ import CheckIn from "./pages/CheckIn";
 import Attendance from "./pages/Attendance";
 import Employees from "./pages/Employees";
 import Profile from "./pages/Profile";
+import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/employees" element={<Employees />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/analytics" element={<AnalyticsDashboard />} />
             </Route>
             
             {/* Catch-all route */}
