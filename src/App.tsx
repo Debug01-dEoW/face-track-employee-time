@@ -16,6 +16,7 @@ import Attendance from "./pages/Attendance";
 import Employees from "./pages/Employees";
 import Profile from "./pages/Profile";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+import PunchAttendance from "./pages/PunchAttendance";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/punch-attendance" element={<PunchAttendance />} />
             
             {/* Protected routes inside MainLayout */}
             <Route element={<MainLayout />}>

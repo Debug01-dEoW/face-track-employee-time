@@ -23,7 +23,7 @@ const Index = () => {
       </nav>
 
       {/* Hero section */}
-      <section className="container mx-auto px-6 pt-20 pb-24 flex flex-col lg:flex-row items-center">
+      <section className="container mx-auto px-6 pt-10 pb-12 flex flex-col lg:flex-row items-center">
         <div className="lg:w-1/2">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6 text-gray-900">
             Employee Attendance, <span className="text-brand-600">Simplified</span>
@@ -37,9 +37,11 @@ const Index = () => {
                 Get Started
               </Button>
             </Link>
-            <Button variant="outline" className="px-8 py-3 text-md">
-              Learn More
-            </Button>
+            <Link to="/punch-attendance">
+              <Button variant="outline" className="px-8 py-3 text-md border-2 border-brand-600 text-brand-600 hover:bg-brand-50">
+                Punch Attendance
+              </Button>
+            </Link>
           </div>
         </div>
         <div className="lg:w-1/2 mt-12 lg:mt-0 flex justify-center">

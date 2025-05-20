@@ -5,9 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
-import { User, Edit, Trash2, Plus } from 'lucide-react';
+import { User, Edit, Trash2, Plus, Camera } from 'lucide-react';
 import EmployeeFormDialog from '@/components/employees/EmployeeFormDialog';
 import DeleteConfirmationDialog from '@/components/employees/DeleteConfirmationDialog';
+import FaceEnrollment from '@/components/employees/FaceEnrollment';
+import { toast } from 'sonner';
+import { hasFaceData, saveFaceData, removeFaceData } from '@/services/FaceDatabase';
 
 // Employee data type
 interface Employee {
@@ -38,6 +41,7 @@ const Employees = () => {
   const [employeeFormOpen, setEmployeeFormOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [faceEnrollmentOpen, setFaceEnrollmentOpen] = useState(false);
   
   // Check if user is admin
   if (user?.role !== 'admin') {
@@ -74,6 +78,9 @@ const Employees = () => {
   const handleDeleteEmployee = () => {
     if (!selectedEmployee) return;
     
+    // Also remove face data if it exists
+    removeFaceData(selectedEmployee.id);
+    
     const updatedEmployees = employeesData.filter(
       employee => employee.id !== selectedEmployee.id
     );
@@ -98,6 +105,34 @@ const Employees = () => {
   const openDeleteDialog = (employee: Employee) => {
     setSelectedEmployee(employee);
     setDeleteDialogOpen(true);
+  };
+  
+  // Open face enrollment dialog
+  const openFaceEnrollment = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setFaceEnrollmentOpen(true);
+  };
+  
+  // Handle face enrollment completion
+  const handleFaceEnrollmentComplete = (faceData: string) => {
+    if (!selectedEmployee) return;
+    
+    // Save face data
+    const success = saveFaceData({
+      employeeId: selectedEmployee.id,
+      employeeName: selectedEmployee.name,
+      department: selectedEmployee.department,
+      position: selectedEmployee.position,
+      faceData
+    });
+    
+    if (success) {
+      toast.success(`Face data for ${selectedEmployee.name} saved successfully`);
+    } else {
+      toast.error("Failed to save face data");
+    }
+    
+    setFaceEnrollmentOpen(false);
   };
 
   return (
@@ -150,7 +185,14 @@ const Employees = () => {
                       <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
                         <User className="h-4 w-4 text-gray-500" />
                       </div>
-                      <span>{employee.name}</span>
+                      <span className="flex items-center">
+                        {employee.name}
+                        {hasFaceData(employee.id) && (
+                          <span className="ml-2 bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded">
+                            Face Enrolled
+                          </span>
+                        )}
+                      </span>
                     </div>
                     <div className="col-span-3">{employee.email}</div>
                     <div className="col-span-2">{employee.department}</div>
@@ -163,6 +205,15 @@ const Employees = () => {
                       </span>
                     </div>
                     <div className="col-span-1 text-right flex justify-end gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => openFaceEnrollment(employee)}
+                        title="Enroll face"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <Camera className="h-4 w-4" />
+                      </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -209,6 +260,20 @@ const Employees = () => {
           onConfirm={handleDeleteEmployee}
           employeeName={selectedEmployee.name}
         />
+      )}
+      
+      {/* Face Enrollment Dialog */}
+      {selectedEmployee && (
+        <div className={`fixed inset-0 z-50 bg-black/50 flex items-center justify-center ${faceEnrollmentOpen ? 'block' : 'hidden'}`}>
+          <div className="max-w-2xl w-full p-4">
+            <FaceEnrollment
+              employeeId={selectedEmployee.id}
+              employeeName={selectedEmployee.name}
+              onComplete={handleFaceEnrollmentComplete}
+              onCancel={() => setFaceEnrollmentOpen(false)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
