@@ -5,10 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
-import { User } from 'lucide-react';
+import { User, Edit, Trash2, Plus } from 'lucide-react';
+import EmployeeFormDialog from '@/components/employees/EmployeeFormDialog';
+import DeleteConfirmationDialog from '@/components/employees/DeleteConfirmationDialog';
 
-// Mock data
-const employeesData = [
+// Employee data type
+interface Employee {
+  id: number;
+  name: string;
+  email: string;
+  department: string;
+  position: string;
+  status: "active" | "inactive";
+}
+
+// Initial mock data
+const initialEmployeesData: Employee[] = [
   { id: 1, name: 'John Doe', email: 'john@example.com', department: 'Engineering', position: 'Software Engineer', status: 'active' },
   { id: 2, name: 'Jane Smith', email: 'jane@example.com', department: 'Marketing', position: 'Marketing Manager', status: 'active' },
   { id: 3, name: 'Robert Johnson', email: 'robert@example.com', department: 'Engineering', position: 'Senior Developer', status: 'active' },
@@ -20,6 +32,12 @@ const employeesData = [
 const Employees = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [employeesData, setEmployeesData] = useState<Employee[]>(initialEmployeesData);
+  
+  // Dialog states
+  const [employeeFormOpen, setEmployeeFormOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   
   // Check if user is admin
   if (user?.role !== 'admin') {
@@ -32,6 +50,55 @@ const Employees = () => {
     employee.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
     employee.position.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Add new employee
+  const handleAddEmployee = (data: Omit<Employee, 'id'>) => {
+    const newId = Math.max(...employeesData.map(e => e.id)) + 1;
+    const newEmployee = { id: newId, ...data };
+    setEmployeesData([...employeesData, newEmployee]);
+  };
+
+  // Edit employee
+  const handleEditEmployee = (data: Omit<Employee, 'id'>) => {
+    if (!selectedEmployee) return;
+    
+    const updatedEmployees = employeesData.map(employee => 
+      employee.id === selectedEmployee.id ? { ...employee, ...data } : employee
+    );
+    
+    setEmployeesData(updatedEmployees);
+    setSelectedEmployee(null);
+  };
+
+  // Delete employee
+  const handleDeleteEmployee = () => {
+    if (!selectedEmployee) return;
+    
+    const updatedEmployees = employeesData.filter(
+      employee => employee.id !== selectedEmployee.id
+    );
+    
+    setEmployeesData(updatedEmployees);
+    setSelectedEmployee(null);
+  };
+
+  // Open add employee dialog
+  const openAddDialog = () => {
+    setSelectedEmployee(null);
+    setEmployeeFormOpen(true);
+  };
+
+  // Open edit employee dialog
+  const openEditDialog = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setEmployeeFormOpen(true);
+  };
+
+  // Open delete confirmation dialog
+  const openDeleteDialog = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setDeleteDialogOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -48,8 +115,11 @@ const Employees = () => {
             <CardTitle>Employee List</CardTitle>
             <CardDescription>Manage your organization's employees</CardDescription>
           </div>
-          <Button className="bg-brand-600 hover:bg-brand-700">
-            Add Employee
+          <Button 
+            className="bg-brand-600 hover:bg-brand-700"
+            onClick={openAddDialog}
+          >
+            <Plus className="w-4 h-4 mr-1" /> Add Employee
           </Button>
         </CardHeader>
         <CardContent>
@@ -69,7 +139,7 @@ const Employees = () => {
               <div className="col-span-2">Department</div>
               <div className="col-span-2">Position</div>
               <div className="col-span-1">Status</div>
-              <div className="col-span-1"></div>
+              <div className="col-span-1 text-right">Actions</div>
             </div>
             
             <div className="divide-y">
@@ -92,9 +162,23 @@ const Employees = () => {
                         {employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
                       </span>
                     </div>
-                    <div className="col-span-1 text-right">
-                      <Button variant="ghost" size="sm">
-                        View
+                    <div className="col-span-1 text-right flex justify-end gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => openEditDialog(employee)}
+                        title="Edit employee"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => openDeleteDialog(employee)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Delete employee"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -108,6 +192,24 @@ const Employees = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Employee Form Dialog */}
+      <EmployeeFormDialog
+        employee={selectedEmployee || undefined}
+        open={employeeFormOpen}
+        onOpenChange={setEmployeeFormOpen}
+        onSubmit={selectedEmployee ? handleEditEmployee : handleAddEmployee}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      {selectedEmployee && (
+        <DeleteConfirmationDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={handleDeleteEmployee}
+          employeeName={selectedEmployee.name}
+        />
+      )}
     </div>
   );
 };
