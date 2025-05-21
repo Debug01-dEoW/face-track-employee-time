@@ -1,601 +1,508 @@
 
 document.addEventListener("DOMContentLoaded", function() {
-  // Load employees when page loads
-  loadEmployees();
-  
-  // Initialize modal functionality
-  const modal = document.getElementById('employee-modal');
-  const faceEnrollmentModal = document.getElementById('face-enrollment-modal');
-  const addEmployeeBtn = document.getElementById('add-employee-btn');
-  const closeModalBtns = document.querySelectorAll('.close-modal');
-  
-  if (addEmployeeBtn) {
-    addEmployeeBtn.addEventListener('click', function() {
-      openModal();
-    });
-  }
-  
-  closeModalBtns.forEach(btn => {
-    btn.addEventListener('click', function() {
-      closeModal();
-      closeFaceEnrollmentModal();
-    });
-  });
-  
-  // Close modal when clicking outside of it
-  window.addEventListener('click', function(event) {
-    if (event.target === modal) {
-      closeModal();
+    // Load and display employees
+    loadEmployees();
+    
+    // Setup modal functionality
+    setupModal();
+    
+    // Setup form submission
+    const employeeForm = document.getElementById('employee-form');
+    if (employeeForm) {
+        employeeForm.addEventListener('submit', handleFormSubmit);
     }
-    if (event.target === faceEnrollmentModal) {
-      closeFaceEnrollmentModal();
-    }
-  });
-  
-  // Set up employee form submission
-  const employeeForm = document.getElementById('employee-form');
-  if (employeeForm) {
-    employeeForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      saveEmployee();
-    });
-  }
-  
-  // Set up face capture functionality
-  const startCaptureBtn = document.getElementById('start-capture');
-  const resetCaptureBtn = document.getElementById('reset-capture');
-  
-  if (startCaptureBtn) {
-    startCaptureBtn.addEventListener('click', function() {
-      startFaceCapture();
-    });
-  }
-  
-  if (resetCaptureBtn) {
-    resetCaptureBtn.addEventListener('click', function() {
-      resetFaceCapture();
-    });
-  }
-  
-  // Set up face enrollment functionality
-  const startEnrollmentBtn = document.getElementById('start-enrollment');
-  const stopEnrollmentBtn = document.getElementById('stop-enrollment');
-  
-  if (startEnrollmentBtn) {
-    startEnrollmentBtn.addEventListener('click', startFaceEnrollment);
-  }
-  
-  if (stopEnrollmentBtn) {
-    stopEnrollmentBtn.addEventListener('click', stopFaceEnrollment);
-  }
+    
+    // Setup face enrollment
+    setupFaceEnrollment();
 });
 
-// Global variables for face capture
-let isCapturing = false;
-let faceSamples = [];
-let captureProgress = 0;
-let currentDirectionIndex = 0;
-let videoStream = null;
-let captureInterval = null;
-
 // Global variables for face enrollment
-let enrollmentStream = null;
 let enrollmentActive = false;
-let enrollmentDirections = [
-  "center", "slightly right", "right", 
-  "slightly left", "left", 
-  "slightly up", "up", 
-  "slightly down", "down",
-  "right up", "right down", 
-  "left up", "left down",
-  "center", // Center shot for better accuracy
-  "slight smile", "big smile", 
-  "neutral", "slight frown", "eyebrows raised"
-];
-let enrollmentProgress = 0;
-let currentDirection = "";
-let enrollmentIndex = 0;
-let enrollmentEmployee = null;
+let capturedSamples = 0;
+let maxSamples = 10;
 
-// Load employees
+// Load employees from storage
 function loadEmployees() {
-  eel.eel_get_employees()(function(employees) {
     const employeesTable = document.getElementById('employees-table');
     if (!employeesTable) return;
     
+    let employees = [];
+    
+    // Try to load from localStorage
+    const storedEmployees = localStorage.getItem('employees');
+    if (storedEmployees) {
+        employees = JSON.parse(storedEmployees);
+    } else {
+        // If no employees in storage, use some sample data
+        employees = [
+            { id: '1001', name: 'John Doe', department: 'IT', position: 'Developer', samples: 5 },
+            { id: '1002', name: 'Jane Smith', department: 'HR', position: 'Manager', samples: 0 },
+        ];
+        localStorage.setItem('employees', JSON.stringify(employees));
+    }
+    
+    // Clear existing table rows
     employeesTable.innerHTML = '';
     
-    if (employees.length === 0) {
-      const row = employeesTable.insertRow();
-      const cell = row.insertCell(0);
-      cell.colSpan = 6;
-      cell.textContent = "No employees registered";
-      cell.style.textAlign = "center";
-      cell.style.padding = "20px";
-      return;
+    // Populate table
+    employees.forEach(employee => {
+        const row = document.createElement('tr');
+        
+        // Check how many face samples are stored
+        let faceSamples = employee.samples || 0;
+        
+        row.innerHTML = `
+            <td>${employee.id}</td>
+            <td>${employee.name}</td>
+            <td>${employee.department || ''}</td>
+            <td>${employee.position || ''}</td>
+            <td>
+                ${faceSamples > 0 ? 
+                    `<span class="badge success">${faceSamples} samples</span>` : 
+                    '<span class="badge warning">No face data</span>'}
+            </td>
+            <td>
+                <div class="actions">
+                    <button class="btn-edit" data-id="${employee.id}">Edit</button>
+                    <button class="btn-delete" data-id="${employee.id}">Delete</button>
+                    <button class="btn-enroll" data-id="${employee.id}" data-name="${employee.name}">
+                        ${faceSamples > 0 ? 'Re-enroll Face' : 'Enroll Face'}
+                    </button>
+                </div>
+            </td>
+        `;
+        
+        employeesTable.appendChild(row);
+    });
+    
+    // Add event listeners to buttons
+    document.querySelectorAll('.btn-edit').forEach(button => {
+        button.addEventListener('click', handleEditClick);
+    });
+    
+    document.querySelectorAll('.btn-delete').forEach(button => {
+        button.addEventListener('click', handleDeleteClick);
+    });
+    
+    document.querySelectorAll('.btn-enroll').forEach(button => {
+        button.addEventListener('click', handleEnrollClick);
+    });
+}
+
+// Setup modal functionality
+function setupModal() {
+    const modal = document.getElementById('employee-modal');
+    const enrollmentModal = document.getElementById('face-enrollment-modal');
+    const addEmployeeBtn = document.getElementById('add-employee-btn');
+    
+    // When the user clicks the "Add Employee" button, open the modal
+    if (addEmployeeBtn) {
+        addEmployeeBtn.addEventListener('click', function() {
+            // Reset form
+            const form = document.getElementById('employee-form');
+            if (form) form.reset();
+            
+            // Clear form ID (indicates this is a new employee, not an edit)
+            form.dataset.employeeId = '';
+            
+            // Update modal title to "Add New Employee"
+            document.querySelector('#employee-modal h2').textContent = 'Add New Employee';
+            
+            // Hide face capture container for new employees
+            const faceCaptureContainer = document.getElementById('face-capture-container');
+            if (faceCaptureContainer) faceCaptureContainer.style.display = 'none';
+            
+            // Show modal
+            modal.style.display = 'block';
+        });
     }
     
-    employees.forEach(employee => {
-      const row = employeesTable.insertRow();
-      
-      const idCell = row.insertCell(0);
-      const nameCell = row.insertCell(1);
-      const deptCell = row.insertCell(2);
-      const posCell = row.insertCell(3);
-      const samplesCell = row.insertCell(4);
-      const actionsCell = row.insertCell(5);
-      
-      idCell.textContent = employee.id;
-      nameCell.textContent = employee.name;
-      deptCell.textContent = employee.department || '-';
-      posCell.textContent = employee.position || '-';
-      samplesCell.textContent = employee.samples || 0;
-      
-      actionsCell.innerHTML = `
-        <button class="secondary-btn face-btn" data-id="${employee.id}" data-name="${employee.name}" data-dept="${employee.department || ''}" data-pos="${employee.position || ''}">Enroll Face</button>
-        <button class="danger-btn delete-btn" data-id="${employee.id}">Delete</button>
-      `;
-      
-      // Set up delete button
-      const deleteBtn = actionsCell.querySelector('.delete-btn');
-      deleteBtn.addEventListener('click', function() {
-        if (confirm(`Are you sure you want to delete ${employee.name}?`)) {
-          deleteEmployee(employee.id);
-        }
-      });
-      
-      // Set up face enrollment button
-      const faceBtn = actionsCell.querySelector('.face-btn');
-      faceBtn.addEventListener('click', function() {
-        openFaceEnrollmentModal(employee.id, employee.name, employee.department, employee.position);
-      });
+    // When the user clicks on close button, close the modal
+    document.querySelectorAll('.close-modal').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+            if (enrollmentModal) enrollmentModal.style.display = 'none';
+            
+            // Stop any active video
+            stopVideo();
+        });
     });
-  });
+    
+    // When the user clicks anywhere outside of the modal, close it
+    window.addEventListener('click', function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+            stopVideo();
+        }
+        if (enrollmentModal && event.target == enrollmentModal) {
+            enrollmentModal.style.display = 'none';
+            stopVideo('enrollment-video');
+        }
+    });
 }
 
-// Delete employee
-function deleteEmployee(employeeId) {
-  // Call Eel function
-  eel.delete_employee(employeeId)(function(response) {
-    if (response) {
-      alert('Employee deleted successfully');
-      loadEmployees(); // Refresh list
-    } else {
-      alert('Failed to delete employee');
+// Handle form submission
+function handleFormSubmit(event) {
+    event.preventDefault();
+    
+    // Get form data
+    const form = event.target;
+    const empId = form.elements['emp-id'].value;
+    const empName = form.elements['emp-name'].value;
+    const empDepartment = form.elements['emp-department'].value;
+    const empPosition = form.elements['emp-position'].value;
+    
+    // Validate form
+    if (!empId || !empName) {
+        alert('Employee ID and Name are required');
+        return;
     }
-  });
+    
+    // Get existing employees
+    let employees = [];
+    const storedEmployees = localStorage.getItem('employees');
+    if (storedEmployees) {
+        employees = JSON.parse(storedEmployees);
+    }
+    
+    // Check if this is an edit (form has employeeId data attribute)
+    const editId = form.dataset.employeeId;
+    
+    if (editId) {
+        // Update existing employee
+        const index = employees.findIndex(emp => emp.id === editId);
+        if (index !== -1) {
+            // Preserve face samples count if it exists
+            const existingSamples = employees[index].samples || 0;
+            
+            employees[index] = {
+                id: empId,
+                name: empName,
+                department: empDepartment,
+                position: empPosition,
+                samples: existingSamples
+            };
+        }
+    } else {
+        // Check if ID already exists
+        if (employees.some(emp => emp.id === empId)) {
+            alert('Employee ID already exists');
+            return;
+        }
+        
+        // Add new employee
+        employees.push({
+            id: empId,
+            name: empName,
+            department: empDepartment,
+            position: empPosition,
+            samples: 0
+        });
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('employees', JSON.stringify(employees));
+    
+    // Close modal and refresh employee list
+    document.getElementById('employee-modal').style.display = 'none';
+    loadEmployees();
 }
 
-// Open modal
-function openModal() {
-  document.getElementById('employee-modal').style.display = 'block';
-  
-  // Reset form
-  document.getElementById('employee-form').reset();
-  
-  // Reset face capture
-  resetFaceCapture();
+// Handle edit button click
+function handleEditClick(event) {
+    const empId = event.target.dataset.id;
+    
+    // Get employee data
+    const employees = JSON.parse(localStorage.getItem('employees') || '[]');
+    const employee = employees.find(emp => emp.id === empId);
+    
+    if (employee) {
+        // Fill form with employee data
+        const form = document.getElementById('employee-form');
+        form.elements['emp-id'].value = employee.id;
+        form.elements['emp-name'].value = employee.name;
+        form.elements['emp-department'].value = employee.department || '';
+        form.elements['emp-position'].value = employee.position || '';
+        
+        // Store the employee ID in the form data attribute
+        form.dataset.employeeId = employee.id;
+        
+        // Update modal title
+        document.querySelector('#employee-modal h2').textContent = 'Edit Employee';
+        
+        // Show face capture container for existing employees
+        const faceCaptureContainer = document.getElementById('face-capture-container');
+        if (faceCaptureContainer) {
+            faceCaptureContainer.style.display = 'block';
+        }
+        
+        // Show modal
+        document.getElementById('employee-modal').style.display = 'block';
+    }
 }
 
-// Close modal
-function closeModal() {
-  document.getElementById('employee-modal').style.display = 'none';
-  
-  // Stop camera if it's running
-  if (videoStream) {
-    stopCamera();
-  }
+// Handle delete button click
+function handleDeleteClick(event) {
+    const empId = event.target.dataset.id;
+    
+    // Confirm deletion
+    if (!confirm('Are you sure you want to delete this employee?')) {
+        return;
+    }
+    
+    // Get employees from storage
+    const employees = JSON.parse(localStorage.getItem('employees') || '[]');
+    
+    // Remove the employee
+    const updatedEmployees = employees.filter(emp => emp.id !== empId);
+    
+    // Save updated list
+    localStorage.setItem('employees', JSON.stringify(updatedEmployees));
+    
+    // Refresh employee list
+    loadEmployees();
 }
 
-// Open face enrollment modal
-function openFaceEnrollmentModal(employeeId, name, department, position) {
-  const modal = document.getElementById('face-enrollment-modal');
-  if (!modal) return;
-  
-  // Store employee data
-  enrollmentEmployee = {
-    id: employeeId,
-    name: name,
-    department: department,
-    position: position
-  };
-  
-  // Update UI
-  const nameElement = document.getElementById('enrollment-employee-name');
-  if (nameElement) {
-    nameElement.textContent = name;
-  }
-  
-  // Reset progress
-  enrollmentProgress = 0;
-  enrollmentIndex = 0;
-  const progressBar = document.getElementById('enrollment-progress-bar');
-  const progressPercent = document.getElementById('enrollment-progress-percent');
-  if (progressBar) progressBar.style.width = '0%';
-  if (progressPercent) progressPercent.textContent = '0%';
-  
-  // Reset instructions
-  const instructions = document.getElementById('enrollment-instructions');
-  if (instructions) {
-    instructions.textContent = 'Click "Start Enrollment" to begin face capture';
-  }
-  
-  // Reset direction
-  const direction = document.getElementById('enrollment-direction');
-  if (direction) {
-    direction.textContent = '';
-  }
-  
-  // Show start button, hide stop button
-  const startBtn = document.getElementById('start-enrollment');
-  const stopBtn = document.getElementById('stop-enrollment');
-  if (startBtn) startBtn.style.display = 'inline-block';
-  if (stopBtn) stopBtn.style.display = 'none';
-  
-  // Show modal
-  modal.style.display = 'block';
-  
-  // Initialize with Python backend
-  eel.eel_start_face_enrollment(name)();
+// Handle face enrollment button click
+function handleEnrollClick(event) {
+    const empId = event.target.dataset.id;
+    const empName = event.target.dataset.name;
+    
+    // Prepare enrollment modal
+    const enrollmentModal = document.getElementById('face-enrollment-modal');
+    const employeeNameElem = document.getElementById('enrollment-employee-name');
+    
+    if (enrollmentModal && employeeNameElem) {
+        // Set employee name in modal
+        employeeNameElem.textContent = `Employee: ${empName}`;
+        
+        // Store employee ID in modal
+        enrollmentModal.dataset.employeeId = empId;
+        
+        // Show modal
+        enrollmentModal.style.display = 'block';
+        
+        // Reset enrollment state
+        capturedSamples = 0;
+        updateEnrollmentProgress(0);
+        
+        // Reset instructions and directions
+        document.getElementById('enrollment-instructions').textContent = "Click \"Start Enrollment\" to begin face capture";
+        document.getElementById('enrollment-direction').textContent = "";
+        
+        // Show start button, hide stop button
+        document.getElementById('start-enrollment').style.display = 'block';
+        document.getElementById('stop-enrollment').style.display = 'none';
+    }
 }
 
-// Close face enrollment modal
-function closeFaceEnrollmentModal() {
-  const modal = document.getElementById('face-enrollment-modal');
-  if (!modal) return;
-  
-  // Stop camera if it's running
-  if (enrollmentStream) {
-    stopEnrollmentCamera();
-  }
-  
-  // Hide modal
-  modal.style.display = 'none';
-  
-  // Reset enrollment state
-  enrollmentActive = false;
-  enrollmentEmployee = null;
+// Setup face enrollment
+function setupFaceEnrollment() {
+    const startEnrollmentBtn = document.getElementById('start-enrollment');
+    const stopEnrollmentBtn = document.getElementById('stop-enrollment');
+    
+    if (startEnrollmentBtn) {
+        startEnrollmentBtn.addEventListener('click', startFaceEnrollment);
+    }
+    
+    if (stopEnrollmentBtn) {
+        stopEnrollmentBtn.addEventListener('click', stopFaceEnrollment);
+    }
 }
 
 // Start face enrollment
-function startFaceEnrollment() {
-  if (enrollmentActive || !enrollmentEmployee) return;
-  
-  enrollmentActive = true;
-  enrollmentProgress = 0;
-  enrollmentIndex = 0;
-  
-  // Show stop button, hide start button
-  document.getElementById('start-enrollment').style.display = 'none';
-  document.getElementById('stop-enrollment').style.display = 'inline-block';
-  
-  // Update UI
-  document.getElementById('enrollment-instructions').textContent = 'Please follow the directions to capture your face from different angles';
-  
-  // Start camera
-  startEnrollmentCamera().then(() => {
-    // Start capture sequence
-    captureNextEnrollmentSample();
-  }).catch(error => {
-    alert(`Could not start camera: ${error.message}`);
-    stopFaceEnrollment();
-  });
+async function startFaceEnrollment() {
+    const enrollmentModal = document.getElementById('face-enrollment-modal');
+    const employeeId = enrollmentModal.dataset.employeeId;
+    const employeeName = document.getElementById('enrollment-employee-name').textContent.replace('Employee: ', '');
+    
+    // Initialize enrollment state
+    enrollmentActive = true;
+    capturedSamples = 0;
+    maxSamples = 10;
+    
+    // Update UI
+    document.getElementById('start-enrollment').style.display = 'none';
+    document.getElementById('stop-enrollment').style.display = 'block';
+    document.getElementById('enrollment-instructions').textContent = "Keep your face centered in the frame. Multiple poses will be captured automatically.";
+    
+    // Start the face enrollment process through Eel
+    const response = await eel.eel_start_face_enrollment(employeeName)();
+    
+    if (response.success) {
+        // Start camera
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: 'user'
+                }
+            });
+            
+            const video = document.getElementById('enrollment-video');
+            video.srcObject = stream;
+            
+            // Play the video
+            video.onloadedmetadata = () => {
+                video.play();
+                
+                // Start capturing faces at intervals
+                captureInterval = setInterval(() => {
+                    if (capturedSamples >= maxSamples || !enrollmentActive) {
+                        clearInterval(captureInterval);
+                        if (enrollmentActive) {
+                            finalizeFaceEnrollment(employeeName);
+                        }
+                        return;
+                    }
+                    
+                    captureFaceSample();
+                }, 1000); // Capture every second
+            };
+        } catch (error) {
+            console.error('Error starting camera:', error);
+            alert('Could not access camera. Please check permissions.');
+            stopFaceEnrollment();
+        }
+    } else {
+        alert('Error starting face enrollment: ' + (response.error || 'Unknown error'));
+        stopFaceEnrollment();
+    }
+}
+
+// Capture a face sample
+function captureFaceSample() {
+    const video = document.getElementById('enrollment-video');
+    const canvas = document.getElementById('enrollment-canvas');
+    
+    if (!video || !canvas) return;
+    
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Draw current video frame to canvas
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Get image data as base64
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    
+    // Set directions for different poses
+    const directions = [
+        "Look straight at the camera",
+        "Turn slightly to the left",
+        "Turn slightly to the right",
+        "Tilt your head up slightly",
+        "Tilt your head down slightly",
+        "Normal position",
+        "Smile",
+        "Serious expression",
+        "Slightly different angle",
+        "Final pose - straight at camera"
+    ];
+    
+    // Update direction text
+    document.getElementById('enrollment-direction').textContent = directions[capturedSamples % directions.length];
+    
+    // Send to Python for processing
+    eel.eel_save_face_snapshot(imageData, capturedSamples)(function(response) {
+        if (response.success) {
+            // Increment sample count
+            capturedSamples++;
+            
+            // Update progress
+            const progress = (capturedSamples / maxSamples) * 100;
+            updateEnrollmentProgress(progress);
+            
+            if (capturedSamples >= maxSamples) {
+                // Finalize enrollment when all samples are collected
+                finalizeFaceEnrollment();
+            }
+        } else {
+            console.error("Failed to save face sample:", response.error);
+            // Don't increment capturedSamples on failure
+        }
+    });
+}
+
+// Update enrollment progress UI
+function updateEnrollmentProgress(percent) {
+    document.getElementById('enrollment-progress-percent').textContent = `${Math.round(percent)}%`;
+    document.getElementById('enrollment-progress-bar').style.width = `${percent}%`;
+}
+
+// Finalize face enrollment process
+async function finalizeFaceEnrollment() {
+    // Stop capturing
+    enrollmentActive = false;
+    clearInterval(captureInterval);
+    
+    // Get employee information
+    const enrollmentModal = document.getElementById('face-enrollment-modal');
+    const employeeId = enrollmentModal.dataset.employeeId;
+    const employeeName = document.getElementById('enrollment-employee-name').textContent.replace('Employee: ', '');
+    
+    // Get employee details
+    const employees = JSON.parse(localStorage.getItem('employees') || '[]');
+    const employee = employees.find(emp => emp.id === employeeId);
+    
+    // Update instructions
+    document.getElementById('enrollment-instructions').textContent = "Processing face samples...";
+    document.getElementById('enrollment-direction').textContent = "Please wait";
+    
+    // Process the face samples
+    const result = await eel.eel_process_face_samples(employeeName)();
+    
+    if (result.success) {
+        // Update employee record with sample count
+        if (employee) {
+            employee.samples = result.samples;
+            localStorage.setItem('employees', JSON.stringify(employees));
+        }
+        
+        // Update UI
+        document.getElementById('enrollment-instructions').textContent = "Face enrollment successful!";
+        document.getElementById('enrollment-direction').textContent = `${result.samples} face samples saved`;
+        
+        // Auto-close after a delay
+        setTimeout(() => {
+            enrollmentModal.style.display = 'none';
+            stopVideo('enrollment-video');
+            loadEmployees(); // Refresh employee list to show updated sample count
+        }, 2000);
+    } else {
+        // Show error
+        document.getElementById('enrollment-instructions').textContent = "Face enrollment failed";
+        document.getElementById('enrollment-direction').textContent = result.error || "Unknown error";
+        
+        // Show restart button
+        document.getElementById('start-enrollment').style.display = 'block';
+        document.getElementById('stop-enrollment').style.display = 'none';
+    }
 }
 
 // Stop face enrollment
 function stopFaceEnrollment() {
-  enrollmentActive = false;
-  
-  // Stop camera
-  stopEnrollmentCamera();
-  
-  // Reset UI
-  document.getElementById('start-enrollment').style.display = 'inline-block';
-  document.getElementById('stop-enrollment').style.display = 'none';
-  document.getElementById('enrollment-instructions').textContent = 'Click "Start Enrollment" to begin face capture';
-  document.getElementById('enrollment-direction').textContent = '';
-  
-  // Reset progress
-  enrollmentProgress = 0;
-  const progressBar = document.getElementById('enrollment-progress-bar');
-  const progressPercent = document.getElementById('enrollment-progress-percent');
-  progressBar.style.width = '0%';
-  progressPercent.textContent = '0%';
-}
-
-// Start enrollment camera
-async function startEnrollmentCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        facingMode: 'user'
-      }
-    });
-    
-    const video = document.getElementById('enrollment-video');
-    video.srcObject = stream;
-    enrollmentStream = stream;
-    
-    return new Promise((resolve) => {
-      video.onloadedmetadata = () => {
-        video.play();
-        resolve();
-      };
-    });
-  } catch (error) {
-    console.error('Error starting camera:', error);
-    throw error;
-  }
-}
-
-// Stop enrollment camera
-function stopEnrollmentCamera() {
-  if (!enrollmentStream) return;
-  
-  const tracks = enrollmentStream.getTracks();
-  tracks.forEach(track => track.stop());
-  enrollmentStream = null;
-  
-  const video = document.getElementById('enrollment-video');
-  if (video) {
-    video.srcObject = null;
-  }
-}
-
-// Capture next enrollment sample
-function captureNextEnrollmentSample() {
-  if (!enrollmentActive || !enrollmentEmployee) return;
-  
-  // If we've captured all samples, finish enrollment
-  if (enrollmentIndex >= enrollmentDirections.length) {
-    finishEnrollment();
-    return;
-  }
-  
-  // Set current direction
-  currentDirection = enrollmentDirections[enrollmentIndex];
-  document.getElementById('enrollment-direction').textContent = `Please look ${currentDirection}`;
-  
-  // Wait a moment for user to adjust position
-  setTimeout(() => {
-    // Capture frame
-    const video = document.getElementById('enrollment-video');
-    const canvas = document.getElementById('enrollment-canvas');
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Get image data as base64
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    
-    // Save to Python backend
-    eel.eel_save_face_snapshot(imageData, enrollmentIndex)(function(response) {
-      if (response.success) {
-        // Update progress
-        enrollmentIndex++;
-        enrollmentProgress = (enrollmentIndex / enrollmentDirections.length) * 100;
-        
-        const progressBar = document.getElementById('enrollment-progress-bar');
-        const progressPercent = document.getElementById('enrollment-progress-percent');
-        
-        progressBar.style.width = `${enrollmentProgress}%`;
-        progressPercent.textContent = `${Math.round(enrollmentProgress)}%`;
-        
-        // Continue with next sample if still active
-        if (enrollmentActive) {
-          setTimeout(captureNextEnrollmentSample, 1500);
-        }
-      } else {
-        alert(`Error saving face snapshot: ${response.error}`);
-        stopFaceEnrollment();
-      }
-    });
-  }, 2000);
-}
-
-// Finish enrollment
-function finishEnrollment() {
-  if (!enrollmentEmployee) return;
-  
-  // Process samples with Python backend
-  eel.eel_process_face_samples(enrollmentEmployee.name)(function(response) {
-    if (response.success) {
-      alert(`Face enrollment completed successfully!\n${response.samples} face samples processed.`);
-      closeFaceEnrollmentModal();
-      loadEmployees(); // Refresh employee list to show updated face samples
-    } else {
-      alert(`Error processing face samples: ${response.error}`);
-      stopFaceEnrollment();
-    }
-  });
-}
-
-// Save employee
-function saveEmployee() {
-  const employeeId = document.getElementById('emp-id').value.trim();
-  const name = document.getElementById('emp-name').value.trim();
-  const department = document.getElementById('emp-department').value.trim();
-  const position = document.getElementById('emp-position').value.trim();
-  
-  if (!employeeId || !name) {
-    alert('Employee ID and Name are required');
-    return;
-  }
-  
-  if (faceSamples.length === 0) {
-    alert('Face enrollment is required. Please capture face samples.');
-    return;
-  }
-  
-  // Prepare face data
-  const faceData = JSON.stringify({
-    samples: faceSamples,
-    timestamp: new Date().toISOString()
-  });
-  
-  // Call Eel function to enroll face
-  eel.eel_enroll_face(employeeId, name, faceData, department, position)(function(response) {
-    if (response.success) {
-      alert(`Employee ${name} enrolled successfully with ${response.samples} face samples`);
-      closeModal();
-      loadEmployees(); // Refresh list
-    } else {
-      alert(`Failed to enroll: ${response.error}`);
-    }
-  });
-}
-
-// Start face capture
-function startFaceCapture() {
-  if (isCapturing) return;
-  
-  isCapturing = true;
-  faceSamples = [];
-  captureProgress = 0;
-  currentDirectionIndex = 0;
-  
-  document.getElementById('start-capture').style.display = 'none';
-  document.getElementById('reset-capture').style.display = 'inline-block';
-  document.getElementById('progress-container').style.display = 'block';
-  
-  // Start camera
-  startCamera().then(() => {
-    // Update instructions
-    document.getElementById('capture-instructions').textContent = 'Look at the camera and follow the instructions';
-    document.getElementById('current-direction').textContent = `Please look ${directions[0]}`;
-    
-    // Start capture sequence after a delay
-    setTimeout(captureNextSample, 2000);
-  }).catch(error => {
-    alert(`Could not start camera: ${error.message}`);
-    resetFaceCapture();
-  });
-}
-
-// Reset face capture
-function resetFaceCapture() {
-  isCapturing = false;
-  
-  document.getElementById('start-capture').style.display = 'inline-block';
-  document.getElementById('reset-capture').style.display = 'none';
-  document.getElementById('progress-container').style.display = 'none';
-  document.getElementById('capture-instructions').textContent = 'Click "Start Capture" to begin face enrollment';
-  document.getElementById('current-direction').textContent = '';
-  
-  // Reset progress bar
-  document.getElementById('progress-percent').textContent = '0%';
-  document.getElementById('progress-bar-inner').style.width = '0%';
-  
-  if (videoStream) {
-    stopCamera();
-  }
-  
-  if (captureInterval) {
+    enrollmentActive = false;
     clearInterval(captureInterval);
-    captureInterval = null;
-  }
+    
+    stopVideo('enrollment-video');
+    
+    // Update UI
+    document.getElementById('start-enrollment').style.display = 'block';
+    document.getElementById('stop-enrollment').style.display = 'none';
+    document.getElementById('enrollment-instructions').textContent = "Enrollment stopped. Click \"Start Enrollment\" to try again.";
+    document.getElementById('enrollment-direction').textContent = "";
 }
 
-// Start camera
-async function startCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        facingMode: 'user'
-      }
-    });
-    
-    const video = document.getElementById('video');
-    video.srcObject = stream;
-    videoStream = stream;
-    
-    return new Promise((resolve) => {
-      video.onloadedmetadata = () => {
-        video.play();
-        resolve();
-      };
-    });
-  } catch (error) {
-    console.error('Error starting camera:', error);
-    throw error;
-  }
-}
-
-// Stop camera
-function stopCamera() {
-  if (!videoStream) return;
-  
-  const tracks = videoStream.getTracks();
-  tracks.forEach(track => track.stop());
-  videoStream = null;
-  
-  const video = document.getElementById('video');
-  video.srcObject = null;
-}
-
-// Capture next sample
-function captureNextSample() {
-  if (!isCapturing) return;
-  
-  // Set current direction
-  const currentDirection = directions[currentDirectionIndex];
-  document.getElementById('current-direction').textContent = `Please look ${currentDirection}`;
-  
-  // Wait a moment for user to adjust position
-  setTimeout(() => {
-    // Capture frame
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Get image data as base64
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    faceSamples.push(imageData);
-    
-    // Update progress
-    currentDirectionIndex++;
-    captureProgress = (currentDirectionIndex / directions.length) * 100;
-    
-    document.getElementById('progress-percent').textContent = `${Math.round(captureProgress)}%`;
-    document.getElementById('progress-bar-inner').style.width = `${captureProgress}%`;
-    
-    // Check if we're done
-    if (currentDirectionIndex >= directions.length) {
-      // We have all samples
-      document.getElementById('capture-instructions').textContent = 'Face enrollment complete!';
-      document.getElementById('current-direction').textContent = '';
-      
-      // Stop capture but keep camera on
-      isCapturing = false;
-      return;
+// Stop video stream
+function stopVideo(videoId = 'video') {
+    const video = document.getElementById(videoId);
+    if (video && video.srcObject) {
+        const tracks = video.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+        video.srcObject = null;
     }
-    
-    // Continue with next sample
-    setTimeout(captureNextSample, 1500);
-  }, 1000);
 }
-
-// Directions for face capture
-const directions = [
-  "center", "slightly right", "right", 
-  "slightly left", "left", 
-  "slightly up", "up", 
-  "slightly down", "down",
-  "right up", "right down", 
-  "left up", "left down",
-  "center", // Center shot for better accuracy
-  "slight smile", "big smile", 
-  "neutral", "slight frown", "eyebrows raised"
-];

@@ -121,6 +121,13 @@ def eel_recognize_face(image_data, confidence_threshold=0.65):
         # Resize to match training data
         resized_img = cv2.resize(face_img, (50, 50)).flatten().reshape(1, -1)
         
+        # Make sure dimensions match the training data
+        if resized_img.shape[1] != face_recognition_data["faces"].shape[1]:
+            print(f"Dimension mismatch: Expected {face_recognition_data['faces'].shape[1]}, got {resized_img.shape[1]}")
+            # Use the smaller dimension
+            min_dim = min(face_recognition_data["faces"].shape[1], resized_img.shape[1])
+            resized_img = resized_img[:, :min_dim]
+        
         # Get prediction
         output = face_recognition_data["classifier"].predict(resized_img)
         probabilities = face_recognition_data["classifier"].predict_proba(resized_img)[0]
@@ -166,6 +173,24 @@ def eel_recognize_face(image_data, confidence_threshold=0.65):
                                 "position": position
                             }
                             break
+                else:
+                    # If XML doesn't exist, try to get from local storage
+                    employees = []
+                    employees_json = os.path.join('data', 'employees.json')
+                    if os.path.exists(employees_json):
+                        with open(employees_json, 'r') as f:
+                            employees = json.load(f)
+                    
+                    # Find matching employee
+                    for employee in employees:
+                        if employee["name"] == recognized_name:
+                            employee_details = {
+                                "name": employee["name"],
+                                "department": employee.get("department", ""),
+                                "position": employee.get("position", "")
+                            }
+                            break
+                            
             except Exception as e:
                 print(f"Error retrieving employee details: {e}")
                 
@@ -174,14 +199,17 @@ def eel_recognize_face(image_data, confidence_threshold=0.65):
                 # Generate timestamp
                 timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
                 
+                # Create data directory if it doesn't exist
+                os.makedirs("data", exist_ok=True)
+                
                 # Create or update attendance.xml
                 attendance_file = "data/attendance.xml"
                 
                 if not os.path.exists(attendance_file):
                     # Create new file
+                    import xml.etree.ElementTree as ET
                     root = ET.Element("attendance_records")
                     tree = ET.ElementTree(root)
-                    os.makedirs(os.path.dirname(attendance_file), exist_ok=True)
                     tree.write(attendance_file)
                 
                 # Add new record
