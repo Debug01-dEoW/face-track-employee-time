@@ -1,0 +1,70 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-In - FaceTrack</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FaceTrack</h1>
+            <div class="theme-toggle">
+                <button id="theme-toggle-btn">🌙</button>
+            </div>
+        </header>
+        
+        <nav>
+            <ul>
+                <li><a href="index.html">Dashboard</a></li>
+                <li><a href="employees.html">Employees</a></li>
+                <li><a href="attendance.html">Attendance</a></li>
+                <li><a href="checkin.html" class="active">Check-In</a></li>
+            </ul>
+        </nav>
+        
+        <main>
+            <div class="checkin-container">
+                <h2>Face Recognition Check-In</h2>
+                
+                <div class="camera-container">
+                    <video id="video" autoplay playsinline></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div id="recognition-status" class="recognition-status">Position your face in the frame</div>
+                </div>
+                
+                <div class="camera-controls">
+                    <button id="start-camera" class="primary-btn">Start Camera</button>
+                    <button id="stop-camera" class="secondary-btn" style="display: none;">Stop Camera</button>
+                    <button id="take-snapshot" class="primary-btn" style="display: none;">Recognize Face</button>
+                </div>
+                
+                <div id="recognition-result" class="recognition-result" style="display: none;">
+                    <div id="recognition-success" style="display: none;">
+                        <div class="success-icon">✓</div>
+                        <h3>Recognition Successful</h3>
+                        <div id="recognized-name" class="recognized-name"></div>
+                        <div id="recognition-time" class="recognition-time"></div>
+                    </div>
+                    <div id="recognition-failure" style="display: none;">
+                        <div class="failure-icon">✗</div>
+                        <h3>Recognition Failed</h3>
+                        <p>No matching face found in our database.</p>
+                        <p>Please try again or contact an administrator.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>&copy; 2025 FaceTrack - Face Recognition Attendance System</p>
+        </footer>
+    </div>
+
+    <script src="/eel.js"></script>
+    <script src="main.js"></script>
+    <script src="checkin.js"></script>
+</body>
+</html>

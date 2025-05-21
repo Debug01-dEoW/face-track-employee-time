@@ -1,4 +1,3 @@
-
 """
 Face Recognition Server for FaceTrack Application
 
@@ -429,6 +428,16 @@ def eel_recognize_face(image_data):
     except Exception as e:
         logger.error(f"Error in eel_recognize_face: {e}")
         return {"success": False, "error": str(e)}
+
+@eel.expose
+def get_attendance_records(limit=100):
+    """Get attendance records via Eel"""
+    return get_attendance_records(limit)
+
+@eel.expose
+def delete_employee(employee_id):
+    """Delete an employee via Eel"""
+    return delete_employee(employee_id)
 
 @app.route('/api/health', methods=['GET'])
 def health_check():

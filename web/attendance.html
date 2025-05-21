@@ -1,0 +1,71 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance - FaceTrack</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FaceTrack</h1>
+            <div class="theme-toggle">
+                <button id="theme-toggle-btn">🌙</button>
+            </div>
+        </header>
+        
+        <nav>
+            <ul>
+                <li><a href="index.html">Dashboard</a></li>
+                <li><a href="employees.html">Employees</a></li>
+                <li><a href="attendance.html" class="active">Attendance</a></li>
+                <li><a href="checkin.html">Check-In</a></li>
+            </ul>
+        </nav>
+        
+        <main>
+            <div class="attendance">
+                <h2>Attendance Records</h2>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="date-filter">Date</label>
+                        <input type="date" id="date-filter">
+                    </div>
+                    <div class="filter-group">
+                        <label for="employee-filter">Employee</label>
+                        <select id="employee-filter">
+                            <option value="">All Employees</option>
+                            <!-- Options will be populated via JavaScript -->
+                        </select>
+                    </div>
+                    <button id="filter-btn" class="secondary-btn">Apply Filter</button>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Date & Time</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-table">
+                        <!-- Attendance records will be populated via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+        
+        <footer>
+            <p>&copy; 2025 FaceTrack - Face Recognition Attendance System</p>
+        </footer>
+    </div>
+
+    <script src="/eel.js"></script>
+    <script src="main.js"></script>
+    <script src="attendance.js"></script>
+</body>
+</html>

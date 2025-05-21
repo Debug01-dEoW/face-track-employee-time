@@ -1,5 +1,4 @@
 
-
 # FaceTrack - Face Recognition Attendance System
 
 ## Overview
@@ -14,14 +13,13 @@ FaceTrack is a web-based attendance tracking system that uses facial recognition
 
 ## Technical Stack
 ### Frontend
-- React with TypeScript
-- Tailwind CSS
-- Shadcn UI components
-- React Router
+- Plain HTML, CSS, and JavaScript (no Node.js required)
+- Responsive design with CSS Grid and Flexbox
+- Dark mode support with localStorage persistence
 
 ### Backend (Python)
 - Flask for the REST API
-- Eel for database operations
+- Eel for database operations and JavaScript-Python communication
 - face_recognition library (based on dlib)
 - XML file storage for employee data
 - NumPy for numerical operations
@@ -30,22 +28,10 @@ FaceTrack is a web-based attendance tracking system that uses facial recognition
 ## Setup Instructions
 
 ### Prerequisites
-- Node.js (v18+)
 - Python 3.7+ (for the face recognition backend)
-- Supabase account (for cloud storage and authentication)
+- Modern web browser (Chrome, Firefox, Edge, Safari)
 
-### Frontend Setup
-1. Clone the repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Start the development server:
-   ```
-   npm run dev
-   ```
-
-### Python Face Recognition Backend Setup
+### Backend Setup
 1. Create a Python virtual environment (recommended):
    ```
    python -m venv venv
@@ -89,8 +75,8 @@ FaceTrack is a web-based attendance tracking system that uses facial recognition
    python face_recognition_server.py
    ```
 
-4. The server will run on http://localhost:5000 by default
-   The Eel web interface will run on http://localhost:8000
+4. The Flask server will run on http://localhost:5000 by default
+   The Eel web interface will automatically open in your browser at http://localhost:8000
 
 ### Browser Compatibility
 For the best face recognition experience:
@@ -105,11 +91,10 @@ For the best face recognition experience:
 3. **Recognition**: Matches captured faces against stored encodings
 
 ## System Architecture
-- The React frontend handles UI and user interactions
+- The HTML/CSS/JS frontend handles UI and user interactions
 - The Python backend processes face recognition tasks
-- Communication happens via RESTful API calls
+- Communication happens via RESTful API calls and Eel
 - XML files store employee data, face encodings, and attendance records
-- Eel provides a bridge between Python and JavaScript
 
 ## XML Data Structure
 1. **employees.xml**: Stores employee information
@@ -128,7 +113,7 @@ For the best face recognition experience:
 3. **encodings.pkl**: Face encoding data stored in pickle format for performance
 
 ## Development Notes
-- The frontend automatically falls back to local mode if the Python backend is unavailable
+- The frontend automatically falls back to mock data if the Python backend is unavailable
 - The Python backend stores face encodings in both a pickle file for fast access
 
 ## Troubleshooting
@@ -136,4 +121,3 @@ For the best face recognition experience:
 - If face recognition is not working, check that the server is running and accessible
 - For camera issues, ensure browser permissions are granted
 - Check browser console logs and Python server logs for any errors
-

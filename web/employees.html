@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employees - FaceTrack</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FaceTrack</h1>
+            <div class="theme-toggle">
+                <button id="theme-toggle-btn">🌙</button>
+            </div>
+        </header>
+        
+        <nav>
+            <ul>
+                <li><a href="index.html">Dashboard</a></li>
+                <li><a href="employees.html" class="active">Employees</a></li>
+                <li><a href="attendance.html">Attendance</a></li>
+                <li><a href="checkin.html">Check-In</a></li>
+            </ul>
+        </nav>
+        
+        <main>
+            <div class="employees">
+                <div class="header-actions">
+                    <h2>Employees</h2>
+                    <button id="add-employee-btn" class="primary-btn">Add Employee</button>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Position</th>
+                            <th>Face Samples</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employees-table">
+                        <!-- Employees will be populated via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="employee-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal">&times;</span>
+                    <h2>Add New Employee</h2>
+                    <form id="employee-form">
+                        <div class="form-group">
+                            <label for="emp-id">Employee ID</label>
+                            <input type="text" id="emp-id" name="emp-id" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="emp-name">Name</label>
+                            <input type="text" id="emp-name" name="emp-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="emp-department">Department</label>
+                            <input type="text" id="emp-department" name="emp-department">
+                        </div>
+                        <div class="form-group">
+                            <label for="emp-position">Position</label>
+                            <input type="text" id="emp-position" name="emp-position">
+                        </div>
+                        <div id="face-capture-container" class="form-group">
+                            <h3>Face Enrollment</h3>
+                            <div class="camera-container">
+                                <video id="video" autoplay playsinline></video>
+                                <canvas id="canvas" style="display: none;"></canvas>
+                                <div id="capture-instructions" class="instructions">Click "Start Capture" to begin face enrollment</div>
+                                <div id="current-direction" class="direction-prompt"></div>
+                                <div id="progress-container" style="display: none;">
+                                    <div class="progress-label">
+                                        <span>Progress:</span>
+                                        <span id="progress-percent">0%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div id="progress-bar-inner" class="progress-bar-inner"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="camera-controls">
+                                <button type="button" id="start-capture" class="secondary-btn">Start Capture</button>
+                                <button type="button" id="reset-capture" class="secondary-btn" style="display: none;">Reset</button>
+                            </div>
+                        </div>
+                        <button type="submit" class="primary-btn">Save Employee</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>&copy; 2025 FaceTrack - Face Recognition Attendance System</p>
+        </footer>
+    </div>
+    
+    <script src="/eel.js"></script>
+    <script src="main.js"></script>
+    <script src="employees.js"></script>
+</body>
+</html>
