@@ -5,6 +5,7 @@ Face Recognition Server for FaceTrack Application
 This Flask server provides face recognition functionality for the FaceTrack web application.
 It uses face_recognition library (which is based on dlib) for accurate face detection and recognition.
 Eel is used for database operations and frontend communication.
+Employee data is stored in XML format.
 
 Requirements:
 - Python 3.7+
@@ -14,9 +15,10 @@ Requirements:
 - Pillow (PIL)
 - flask-cors
 - eel
+- lxml (for XML processing)
 
 Install dependencies:
-pip install flask face_recognition numpy Pillow flask-cors eel
+pip install flask face_recognition numpy Pillow flask-cors eel lxml
 """
 
 from flask import Flask, request, jsonify
@@ -32,7 +34,11 @@ import time
 from datetime import datetime
 import logging
 import eel
-import sqlite3
+import xml.etree.ElementTree as ET
+from lxml import etree
+import pickle
+import uuid
+import threading
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -45,113 +51,123 @@ CORS(app)  # Enable CORS for all routes
 # Initialize Eel
 eel.init('web')  # 'web' is the directory that contains the frontend files
 
-# Database setup
-DB_PATH = "face_data/facetrack.db"
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-
-def init_db():
-    """Initialize the SQLite database"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # Create tables if they don't exist
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS employees (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        department TEXT,
-        position TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    ''')
-    
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS face_encodings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        employee_id TEXT NOT NULL,
-        encoding BLOB NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (employee_id) REFERENCES employees (id)
-    )
-    ''')
-    
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS attendance (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        employee_id TEXT NOT NULL,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        type TEXT NOT NULL,
-        FOREIGN KEY (employee_id) REFERENCES employees (id)
-    )
-    ''')
-    
-    conn.commit()
-    conn.close()
-    logger.info("Database initialized")
-
-# Call init_db to ensure tables exist
-init_db()
-
-# Directory to store face encodings as backup
+# Directory to store XML data and face encodings
 DATA_DIR = "face_data"
-ENCODINGS_FILE = os.path.join(DATA_DIR, "encodings.json")
+EMPLOYEES_XML = os.path.join(DATA_DIR, "employees.xml")
+ATTENDANCE_XML = os.path.join(DATA_DIR, "attendance.xml")
+ENCODINGS_FILE = os.path.join(DATA_DIR, "encodings.pkl")
 
 # Create data directory if it doesn't exist
 os.makedirs(DATA_DIR, exist_ok=True)
 
+# Lock for thread safety when accessing XML files
+xml_lock = threading.Lock()
+
 # Cache for face encodings (for faster access)
 employee_encodings_cache = {}
 
-def load_encodings_from_db():
-    """Load face encodings from the database into cache"""
+def initialize_xml_files():
+    """Initialize XML files if they don't exist"""
+    # Create employees XML if it doesn't exist
+    if not os.path.exists(EMPLOYEES_XML):
+        root = ET.Element("employees")
+        tree = ET.ElementTree(root)
+        tree.write(EMPLOYEES_XML, encoding='utf-8', xml_declaration=True)
+        logger.info("Created new employees XML file")
+    
+    # Create attendance XML if it doesn't exist
+    if not os.path.exists(ATTENDANCE_XML):
+        root = ET.Element("attendance_records")
+        tree = ET.ElementTree(root)
+        tree.write(ATTENDANCE_XML, encoding='utf-8', xml_declaration=True)
+        logger.info("Created new attendance XML file")
+
+initialize_xml_files()
+
+def get_employee_by_id(employee_id):
+    """Get employee data by ID from XML"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Get all employees with their face encodings
-        cursor.execute('''
-        SELECT e.id, e.name, f.encoding 
-        FROM employees e
-        LEFT JOIN face_encodings f ON e.id = f.employee_id
-        ''')
-        
-        results = cursor.fetchall()
-        
-        # Group by employee
-        for employee_id, name, encoding_blob in results:
-            if encoding_blob:  # Some employees might not have encodings yet
-                if employee_id not in employee_encodings_cache:
-                    employee_encodings_cache[employee_id] = {
-                        "name": name,
-                        "encodings": []
+        with xml_lock:
+            tree = ET.parse(EMPLOYEES_XML)
+            root = tree.getroot()
+            
+            for employee in root.findall("employee"):
+                if employee.get("id") == employee_id:
+                    return {
+                        "id": employee.get("id"),
+                        "name": employee.find("name").text,
+                        "department": employee.find("department").text if employee.find("department") is not None else "",
+                        "position": employee.find("position").text if employee.find("position") is not None else "",
+                        "created_at": employee.get("created_at")
                     }
-                
-                # Convert BLOB to numpy array
-                encoding = np.frombuffer(encoding_blob, dtype=np.float64)
-                employee_encodings_cache[employee_id]["encodings"].append(encoding)
         
-        conn.close()
-        logger.info(f"Loaded {len(employee_encodings_cache)} employee records from database")
-        return True
+        return None
     except Exception as e:
-        logger.error(f"Error loading encodings from database: {e}")
+        logger.error(f"Error retrieving employee: {e}")
+        return None
+
+def save_employee(employee_id, name, department="", position=""):
+    """Save employee data to XML"""
+    try:
+        with xml_lock:
+            tree = ET.parse(EMPLOYEES_XML)
+            root = tree.getroot()
+            
+            # Check if employee already exists
+            existing = False
+            for employee in root.findall("employee"):
+                if employee.get("id") == employee_id:
+                    existing = True
+                    employee.find("name").text = name
+                    if employee.find("department") is not None:
+                        employee.find("department").text = department
+                    else:
+                        dept = ET.SubElement(employee, "department")
+                        dept.text = department
+                        
+                    if employee.find("position") is not None:
+                        employee.find("position").text = position
+                    else:
+                        pos = ET.SubElement(employee, "position")
+                        pos.text = position
+                    break
+            
+            # Add new employee if not found
+            if not existing:
+                employee = ET.SubElement(root, "employee")
+                employee.set("id", employee_id)
+                employee.set("created_at", datetime.now().isoformat())
+                
+                name_elem = ET.SubElement(employee, "name")
+                name_elem.text = name
+                
+                dept = ET.SubElement(employee, "department")
+                dept.text = department
+                
+                pos = ET.SubElement(employee, "position")
+                pos.text = position
+            
+            # Write back to file
+            tree.write(EMPLOYEES_XML, encoding='utf-8', xml_declaration=True)
+            
+            # Pretty print for better readability
+            parser = etree.XMLParser(remove_blank_text=True)
+            tree = etree.parse(EMPLOYEES_XML, parser)
+            tree.write(EMPLOYEES_XML, encoding='utf-8', xml_declaration=True, pretty_print=True)
+            
+            return True
+    except Exception as e:
+        logger.error(f"Error saving employee: {e}")
         return False
 
-# Load existing encodings from file as backup
 def load_encodings_from_file():
-    """Load face encodings from file as backup"""
+    """Load face encodings from pickle file"""
     if os.path.exists(ENCODINGS_FILE):
         try:
-            with open(ENCODINGS_FILE, 'r') as f:
-                data = json.load(f)
-                for employee_id, employee_data in data.items():
-                    # Convert string encodings back to numpy arrays
-                    encodings = [np.array(enc) for enc in employee_data["encodings"]]
-                    employee_encodings_cache[employee_id] = {
-                        "name": employee_data["name"],
-                        "encodings": encodings
-                    }
-            logger.info(f"Loaded {len(employee_encodings_cache)} employee records from file backup")
+            with open(ENCODINGS_FILE, 'rb') as f:
+                global employee_encodings_cache
+                employee_encodings_cache = pickle.load(f)
+            logger.info(f"Loaded {len(employee_encodings_cache)} employee encodings from file")
             return True
         except Exception as e:
             logger.error(f"Error loading encodings file: {e}")
@@ -160,78 +176,124 @@ def load_encodings_from_file():
         logger.info("No existing encodings file found")
         return False
 
-# Try loading from DB first, then from file
-if not load_encodings_from_db():
-    load_encodings_from_file()
-
-def save_encodings_to_db(employee_id, name, encodings, department="", position=""):
-    """Save face encodings to the database"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Check if employee exists
-        cursor.execute("SELECT id FROM employees WHERE id = ?", (employee_id,))
-        if not cursor.fetchone():
-            # Add employee if they don't exist
-            cursor.execute(
-                "INSERT INTO employees (id, name, department, position) VALUES (?, ?, ?, ?)",
-                (employee_id, name, department, position)
-            )
-        
-        # Add encodings
-        for encoding in encodings:
-            # Convert numpy array to BLOB
-            encoding_blob = encoding.tobytes()
-            cursor.execute(
-                "INSERT INTO face_encodings (employee_id, encoding) VALUES (?, ?)",
-                (employee_id, encoding_blob)
-            )
-        
-        conn.commit()
-        conn.close()
-        logger.info(f"Saved {len(encodings)} encodings for employee {employee_id} to database")
-        return True
-    except Exception as e:
-        logger.error(f"Error saving encodings to database: {e}")
-        return False
+# Try loading existing encodings
+load_encodings_from_file()
 
 def save_encodings_to_file():
-    """Save face encodings to file as backup"""
+    """Save face encodings to pickle file"""
     try:
-        # Convert numpy arrays to lists for JSON serialization
-        data = {}
-        for employee_id, employee_data in employee_encodings_cache.items():
-            data[employee_id] = {
-                "name": employee_data["name"],
-                "encodings": [enc.tolist() for enc in employee_data["encodings"]]
-            }
-        
-        with open(ENCODINGS_FILE, 'w') as f:
-            json.dump(data, f)
-        logger.info(f"Saved {len(employee_encodings_cache)} employee records to file backup")
+        with open(ENCODINGS_FILE, 'wb') as f:
+            pickle.dump(employee_encodings_cache, f)
+        logger.info(f"Saved {len(employee_encodings_cache)} employee encodings to file")
         return True
     except Exception as e:
         logger.error(f"Error saving encodings file: {e}")
         return False
 
 def record_attendance(employee_id, attendance_type="IN"):
-    """Record an attendance entry in the database"""
+    """Record an attendance entry in the XML file"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            "INSERT INTO attendance (employee_id, type) VALUES (?, ?)",
-            (employee_id, attendance_type)
-        )
-        
-        conn.commit()
-        conn.close()
-        logger.info(f"Recorded {attendance_type} attendance for employee {employee_id}")
-        return True
+        with xml_lock:
+            tree = ET.parse(ATTENDANCE_XML)
+            root = tree.getroot()
+            
+            record = ET.SubElement(root, "record")
+            record.set("id", str(uuid.uuid4()))
+            record.set("employee_id", employee_id)
+            record.set("timestamp", datetime.now().isoformat())
+            record.set("type", attendance_type)
+            
+            # Write back to file
+            tree.write(ATTENDANCE_XML, encoding='utf-8', xml_declaration=True)
+            
+            # Pretty print for better readability
+            parser = etree.XMLParser(remove_blank_text=True)
+            tree = etree.parse(ATTENDANCE_XML, parser)
+            tree.write(ATTENDANCE_XML, encoding='utf-8', xml_declaration=True, pretty_print=True)
+            
+            logger.info(f"Recorded {attendance_type} attendance for employee {employee_id}")
+            return True
     except Exception as e:
         logger.error(f"Error recording attendance: {e}")
+        return False
+
+def get_all_employees():
+    """Get all employees from XML"""
+    try:
+        with xml_lock:
+            tree = ET.parse(EMPLOYEES_XML)
+            root = tree.getroot()
+            
+            employees = []
+            for employee in root.findall("employee"):
+                employees.append({
+                    "id": employee.get("id"),
+                    "name": employee.find("name").text,
+                    "department": employee.find("department").text if employee.find("department") is not None else "",
+                    "position": employee.find("position").text if employee.find("position") is not None else "",
+                    "created_at": employee.get("created_at"),
+                    "samples": len(employee_encodings_cache.get(employee.get("id"), {}).get("encodings", [])),
+                })
+            
+            return employees
+    except Exception as e:
+        logger.error(f"Error getting all employees: {e}")
+        return []
+
+def get_attendance_records(limit=100):
+    """Get attendance records from XML"""
+    try:
+        with xml_lock:
+            tree = ET.parse(ATTENDANCE_XML)
+            root = tree.getroot()
+            
+            records = []
+            for record in root.findall("record"):
+                employee_id = record.get("employee_id")
+                employee = get_employee_by_id(employee_id)
+                
+                records.append({
+                    "id": record.get("id"),
+                    "employeeId": employee_id,
+                    "employeeName": employee["name"] if employee else "Unknown",
+                    "timestamp": record.get("timestamp"),
+                    "type": record.get("type")
+                })
+            
+            # Sort by timestamp desc and limit records
+            records.sort(key=lambda x: x["timestamp"], reverse=True)
+            return records[:limit]
+    except Exception as e:
+        logger.error(f"Error getting attendance records: {e}")
+        return []
+
+def delete_employee(employee_id):
+    """Delete an employee and their data"""
+    try:
+        # Delete from XML
+        with xml_lock:
+            tree = ET.parse(EMPLOYEES_XML)
+            root = tree.getroot()
+            
+            for employee in root.findall("employee"):
+                if employee.get("id") == employee_id:
+                    root.remove(employee)
+                    tree.write(EMPLOYEES_XML, encoding='utf-8', xml_declaration=True)
+                    
+                    # Pretty print for better readability
+                    parser = etree.XMLParser(remove_blank_text=True)
+                    tree = etree.parse(EMPLOYEES_XML, parser)
+                    tree.write(EMPLOYEES_XML, encoding='utf-8', xml_declaration=True, pretty_print=True)
+                    break
+        
+        # Remove from encodings cache
+        if employee_id in employee_encodings_cache:
+            del employee_encodings_cache[employee_id]
+            save_encodings_to_file()
+            
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting employee: {e}")
         return False
 
 def base64_to_image(base64_string):
@@ -279,28 +341,7 @@ def process_face_image(image):
 @eel.expose
 def eel_get_employees():
     """Get all employees via Eel"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT id, name, department, position FROM employees")
-        employees = cursor.fetchall()
-        
-        # Convert to list of dictionaries
-        result = []
-        for emp in employees:
-            result.append({
-                "id": emp[0],
-                "name": emp[1],
-                "department": emp[2] or "",
-                "position": emp[3] or ""
-            })
-        
-        conn.close()
-        return result
-    except Exception as e:
-        logger.error(f"Error getting employees via Eel: {e}")
-        return []
+    return get_all_employees()
 
 @eel.expose
 def eel_enroll_face(employee_id, name, face_data, department="", position=""):
@@ -323,8 +364,8 @@ def eel_enroll_face(employee_id, name, face_data, department="", position=""):
         if not valid_encodings:
             return {"success": False, "error": "No valid face encodings could be extracted"}
         
-        # Store in database
-        save_encodings_to_db(employee_id, name, valid_encodings, department, position)
+        # Store employee data
+        save_employee(employee_id, name, department, position)
         
         # Update cache
         employee_encodings_cache[employee_id] = {
@@ -332,7 +373,7 @@ def eel_enroll_face(employee_id, name, face_data, department="", position=""):
             "encodings": valid_encodings
         }
         
-        # Save to file as backup
+        # Save to file
         save_encodings_to_file()
         
         return {"success": True, "samples": len(valid_encodings)}
@@ -428,8 +469,8 @@ def enroll_face():
                 "error": "No valid face encodings could be extracted"
             }), 400
         
-        # Store in database
-        save_encodings_to_db(employee_id, employee_name, valid_encodings, department, position)
+        # Save employee data
+        save_employee(employee_id, employee_name, department, position)
         
         # Update cache
         employee_encodings_cache[employee_id] = {
@@ -437,7 +478,7 @@ def enroll_face():
             "encodings": valid_encodings
         }
         
-        # Save to file as backup
+        # Save encodings to file
         save_encodings_to_file()
         
         return jsonify({
@@ -530,33 +571,11 @@ def recognize_face():
 def list_employees():
     """List all enrolled employees"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        SELECT e.id, e.name, e.department, e.position, COUNT(f.id) as sample_count
-        FROM employees e
-        LEFT JOIN face_encodings f ON e.id = f.employee_id
-        GROUP BY e.id
-        ''')
-        
-        employees = cursor.fetchall()
-        result = []
-        
-        for emp in employees:
-            result.append({
-                "id": emp[0],
-                "name": emp[1],
-                "department": emp[2] or "",
-                "position": emp[3] or "",
-                "samples": emp[4]
-            })
-        
-        conn.close()
+        employees = get_all_employees()
         
         return jsonify({
             "success": True,
-            "employees": result
+            "employees": employees
         })
     except Exception as e:
         logger.error(f"Error in list_employees: {e}")
@@ -566,45 +585,23 @@ def list_employees():
         }), 500
 
 @app.route('/api/employees/<employee_id>', methods=['DELETE'])
-def delete_employee(employee_id):
+def delete_employee_endpoint(employee_id):
     """Delete an employee's face data"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+        success = delete_employee(employee_id)
         
-        # Delete face encodings first (due to foreign key constraint)
-        cursor.execute("DELETE FROM face_encodings WHERE employee_id = ?", (employee_id,))
-        
-        # Delete attendance records
-        cursor.execute("DELETE FROM attendance WHERE employee_id = ?", (employee_id,))
-        
-        # Delete employee
-        cursor.execute("DELETE FROM employees WHERE id = ?", (employee_id,))
-        
-        # Check if any rows were affected
-        if cursor.rowcount == 0:
-            conn.close()
+        if not success:
             return jsonify({
                 "success": False,
-                "error": "Employee not found"
-            }), 404
-        
-        conn.commit()
-        conn.close()
-        
-        # Remove from cache
-        if employee_id in employee_encodings_cache:
-            del employee_encodings_cache[employee_id]
+                "error": "Failed to delete employee"
+            }), 500
             
-        # Update backup file
-        save_encodings_to_file()
-        
         return jsonify({
             "success": True,
             "message": f"Employee {employee_id} deleted"
         })
     except Exception as e:
-        logger.error(f"Error in delete_employee: {e}")
+        logger.error(f"Error in delete_employee_endpoint: {e}")
         return jsonify({
             "success": False,
             "error": str(e)
@@ -614,27 +611,23 @@ def delete_employee(employee_id):
 def get_stats():
     """Get system statistics"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Count employees
-        cursor.execute("SELECT COUNT(*) FROM employees")
-        total_employees = cursor.fetchone()[0]
+        employees = get_all_employees()
         
         # Count face samples
-        cursor.execute("SELECT COUNT(*) FROM face_encodings")
-        total_samples = cursor.fetchone()[0]
+        total_samples = 0
+        for employee_id in employee_encodings_cache:
+            total_samples += len(employee_encodings_cache[employee_id]["encodings"])
         
         # Count attendance records
-        cursor.execute("SELECT COUNT(*) FROM attendance")
-        total_attendance = cursor.fetchone()[0]
-        
-        conn.close()
+        with xml_lock:
+            tree = ET.parse(ATTENDANCE_XML)
+            root = tree.getroot()
+            total_attendance = len(root.findall("record"))
         
         return jsonify({
             "success": True,
             "stats": {
-                "totalEmployees": total_employees,
+                "totalEmployees": len(employees),
                 "totalSamples": total_samples,
                 "totalAttendance": total_attendance
             }
@@ -650,34 +643,11 @@ def get_stats():
 def get_attendance():
     """Get attendance records"""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        SELECT a.id, a.employee_id, e.name, a.timestamp, a.type
-        FROM attendance a
-        JOIN employees e ON a.employee_id = e.id
-        ORDER BY a.timestamp DESC
-        LIMIT 100
-        ''')
-        
-        records = cursor.fetchall()
-        result = []
-        
-        for rec in records:
-            result.append({
-                "id": rec[0],
-                "employeeId": rec[1],
-                "employeeName": rec[2],
-                "timestamp": rec[3],
-                "type": rec[4]
-            })
-        
-        conn.close()
+        records = get_attendance_records(limit=100)
         
         return jsonify({
             "success": True,
-            "records": result
+            "records": records
         })
     except Exception as e:
         logger.error(f"Error in get_attendance: {e}")
@@ -688,7 +658,7 @@ def get_attendance():
 
 # Run Flask and Eel together
 if __name__ == '__main__':
-    logger.info("Starting Face Recognition Server with Eel and SQLite on port 5000")
+    logger.info("Starting Face Recognition Server with Eel and XML storage on port 5000")
     
     # Start Eel in a separate thread
     import threading

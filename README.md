@@ -22,7 +22,7 @@ FaceTrack is a web-based attendance tracking system that uses facial recognition
 - Flask for the REST API
 - Eel for database operations
 - face_recognition library (based on dlib)
-- SQLite database for local storage
+- XML file storage for employee data
 - NumPy for numerical operations
 - Pillow for image processing
 
@@ -58,7 +58,7 @@ FaceTrack is a web-based attendance tracking system that uses facial recognition
 
 2. Install the required Python libraries:
    ```
-   pip install flask face_recognition numpy Pillow flask-cors eel sqlite3
+   pip install flask face_recognition numpy Pillow flask-cors eel lxml
    ```
    
    **Note:** Installing the face_recognition library may require some additional steps on certain operating systems. 
@@ -107,32 +107,28 @@ For the best face recognition experience:
 - The React frontend handles UI and user interactions
 - The Python backend processes face recognition tasks
 - Communication happens via RESTful API calls
-- SQLite database stores employee data, face encodings, and attendance records
+- XML files store employee data, face encodings, and attendance records
 - Eel provides a bridge between Python and JavaScript
 
-## Database Structure
-1. **employees** table:
-   - id: Employee ID (primary key)
-   - name: Employee name
-   - department: Department
-   - position: Position
-   - created_at: Timestamp
+## XML Data Structure
+1. **employees.xml**: Stores employee information
+   - id: Employee ID (attribute)
+   - name: Employee name (element)
+   - department: Department (element)
+   - position: Position (element)
+   - created_at: Timestamp (attribute)
 
-2. **face_encodings** table:
-   - id: Auto-incrementing ID (primary key)
-   - employee_id: Foreign key to employees table
-   - encoding: Face encoding data (BLOB)
-   - created_at: Timestamp
+2. **attendance.xml**: Stores attendance records
+   - id: UUID (attribute)
+   - employee_id: Foreign key to employees (attribute)
+   - timestamp: Check-in/out timestamp (attribute)
+   - type: Attendance type (IN/OUT) (attribute)
 
-3. **attendance** table:
-   - id: Auto-incrementing ID (primary key)
-   - employee_id: Foreign key to employees table
-   - timestamp: Check-in/out timestamp
-   - type: Attendance type (IN/OUT)
+3. **encodings.pkl**: Face encoding data stored in pickle format for performance
 
 ## Development Notes
 - The frontend automatically falls back to local mode if the Python backend is unavailable
-- The Python backend stores face encodings in both SQLite and a JSON file for redundancy
+- The Python backend stores face encodings in both a pickle file for fast access
 
 ## Troubleshooting
 - If the Python server cannot start, ensure all dependencies are installed correctly
