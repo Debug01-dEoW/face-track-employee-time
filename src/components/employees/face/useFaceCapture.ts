@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 
@@ -12,8 +13,8 @@ export interface FaceCapture {
   resetCapture: () => void;
 }
 
-// Standard image dimensions for face processing (same as Python script)
-const FACE_IMAGE_SIZE = 50;
+// Standard image dimensions for face processing
+const FACE_IMAGE_SIZE = 150; // Larger size for better recognition with Python backend
 
 export const useFaceCapture = (onComplete: (faceData: string) => void) => {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -43,7 +44,7 @@ export const useFaceCapture = (onComplete: (faceData: string) => void) => {
     "slightly down", "down",
     "right up", "right down", 
     "left up", "left down",
-    "center", "center", // More center shots for better accuracy
+    "center", // Center shot for better accuracy
     "slight smile", "big smile", 
     "neutral", "slight frown", "eyebrows raised"
   ];
@@ -105,57 +106,7 @@ export const useFaceCapture = (onComplete: (faceData: string) => void) => {
     }
   };
 
-  // Process image to standardized format (similar to Python script)
-  const processImage = (imageData: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (!processingCanvasRef.current) {
-        reject(new Error("Processing canvas not available"));
-        return;
-      }
-      
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const canvas = processingCanvasRef.current as HTMLCanvasElement;
-          const ctx = canvas.getContext('2d');
-          
-          if (!ctx) {
-            reject(new Error("Could not get canvas context"));
-            return;
-          }
-          
-          // Clear canvas
-          ctx.fillStyle = "#FFFFFF";
-          ctx.fillRect(0, 0, FACE_IMAGE_SIZE, FACE_IMAGE_SIZE);
-          
-          // Draw image resized to 50x50 (matching Python script)
-          ctx.drawImage(img, 0, 0, FACE_IMAGE_SIZE, FACE_IMAGE_SIZE);
-          
-          // Get image data for processing
-          const imageDataObj = ctx.getImageData(0, 0, FACE_IMAGE_SIZE, FACE_IMAGE_SIZE);
-          
-          // Convert to grayscale (optional, similar to Python script's capability)
-          // Keeping color information for now as it may be useful for recognition
-          
-          // Return processed image as data URL
-          const processedDataUrl = canvas.toDataURL("image/png");
-          console.log("Image successfully processed to standard format");
-          resolve(processedDataUrl);
-        } catch (e) {
-          console.error("Error processing image:", e);
-          reject(e);
-        }
-      };
-      
-      img.onerror = () => {
-        reject(new Error("Failed to load image for processing"));
-      };
-      
-      img.src = imageData;
-    });
-  };
-
-  // Capture a single face sample with better error handling
+  // Capture a single face sample
   const captureSample = async () => {
     if (!videoRef.current || !canvasRef.current) {
       console.error("Video or canvas ref is null");
@@ -184,19 +135,9 @@ export const useFaceCapture = (onComplete: (faceData: string) => void) => {
         console.log("Frame drawn to canvas");
         
         // Convert to data URL
-        const dataUrl = canvas.toDataURL("image/png");
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.9); // Use JPEG with 90% quality for smaller size
         console.log("Sample captured successfully");
-        
-        // Process image to standardized format
-        try {
-          const processedDataUrl = await processImage(dataUrl);
-          console.log("Image processed successfully");
-          return processedDataUrl;
-        } catch (e) {
-          console.error("Error in image processing:", e);
-          // Fall back to original if processing fails
-          return dataUrl;
-        }
+        return dataUrl;
       } catch (e) {
         console.error("Error capturing frame:", e);
         return null;
@@ -208,7 +149,7 @@ export const useFaceCapture = (onComplete: (faceData: string) => void) => {
 
   // Capture next sample with delay
   const captureNextSample = async () => {
-    if (faceSamples.length >= 20) {
+    if (faceSamples.length >= directions.length) {
       console.log("All samples collected, finishing capture");
       finishCapture();
       return;
@@ -223,7 +164,7 @@ export const useFaceCapture = (onComplete: (faceData: string) => void) => {
       const sample = await captureSample();
       if (sample) {
         setFaceSamples(prev => [...prev, sample]);
-        setProgress((faceSamples.length + 1) * 5); // 5% per sample
+        setProgress(((faceSamples.length + 1) / directions.length) * 100); // Update progress
         console.log("Sample added, new count:", faceSamples.length + 1);
       } else {
         console.error("Failed to capture sample");
@@ -270,7 +211,7 @@ export const useFaceCapture = (onComplete: (faceData: string) => void) => {
       samples: faceSamples,
       processingInfo: {
         imageSize: FACE_IMAGE_SIZE,
-        format: "PNG"
+        format: "JPEG"
       }
     });
     

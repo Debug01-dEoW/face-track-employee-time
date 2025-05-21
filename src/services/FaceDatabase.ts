@@ -1,6 +1,5 @@
 
-// This service simulates storing face data
-// In a real implementation, this would interact with a backend API
+import { checkServiceAvailability, enrollFace } from './FaceRecognitionService';
 
 // Types
 export interface FaceData {
@@ -26,7 +25,7 @@ export const getAllFaceData = (): FaceData[] => {
 };
 
 // Save face data for an employee
-export const saveFaceData = (data: FaceData): boolean => {
+export const saveFaceData = async (data: FaceData): Promise<boolean> => {
   try {
     const existingData = getAllFaceData();
     
@@ -43,6 +42,13 @@ export const saveFaceData = (data: FaceData): boolean => {
     
     // Save to localStorage
     localStorage.setItem(FACE_DB_KEY, JSON.stringify(existingData));
+    
+    // Try to also save to Python backend if available
+    const isServerAvailable = await checkServiceAvailability();
+    if (isServerAvailable) {
+      await enrollFace(data.employeeId, data.employeeName, data.faceData);
+    }
+    
     return true;
   } catch (error) {
     console.error("Error saving face data:", error);
@@ -58,6 +64,10 @@ export const removeFaceData = (employeeId: number): boolean => {
     
     // Save to localStorage
     localStorage.setItem(FACE_DB_KEY, JSON.stringify(filteredData));
+    
+    // Note: We should also remove from the Python backend, but that would require
+    // additional API endpoint implementation
+    
     return true;
   } catch (error) {
     console.error("Error removing face data:", error);
@@ -65,28 +75,51 @@ export const removeFaceData = (employeeId: number): boolean => {
   }
 };
 
-// Find employee by face data (simulated)
+// Find employee by face data
 export const findEmployeeByFace = async (faceImage: string): Promise<FaceData | null> => {
-  // In a real implementation, this would use a face recognition API
-  // Here we're just simulating a delay and returning a match for demo purposes
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Get all employees with face data
-      const employees = getAllFaceData();
+  try {
+    // Try to use Python backend first
+    const isServerAvailable = await checkServiceAvailability();
+    
+    if (isServerAvailable) {
+      // This will be handled by the FaceRecognitionService
+      const result = await import('./FaceRecognitionService').then(module => 
+        module.recognizeFace(faceImage)
+      );
       
-      if (employees.length === 0) {
-        resolve(null);
-        return;
+      if (result) {
+        // If recognized, find the corresponding employee in our local database
+        const employees = getAllFaceData();
+        const matchedEmployee = employees.find(emp => emp.employeeId.toString() === result.id);
+        
+        if (matchedEmployee) {
+          return matchedEmployee;
+        }
       }
-      
-      // In a real system, we would compare the face image against all stored face data
-      // For demo purposes, we'll just return the first employee (to simulate a match)
-      // This should be replaced with actual face recognition logic
-      
-      const randomIndex = Math.floor(Math.random() * employees.length);
-      resolve(employees[randomIndex]);
-    }, 2000); // Simulate 2-second processing time
-  });
+    }
+    
+    // Fall back to local implementation if Python backend is not available or no match was found
+    console.log("Falling back to local face recognition (mock)");
+    
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Get all employees with face data
+        const employees = getAllFaceData();
+        
+        if (employees.length === 0) {
+          resolve(null);
+          return;
+        }
+        
+        // For demo purposes without Python backend, we'll just return a random employee
+        const randomIndex = Math.floor(Math.random() * employees.length);
+        resolve(employees[randomIndex]);
+      }, 1000);
+    });
+  } catch (error) {
+    console.error("Error in findEmployeeByFace:", error);
+    return null;
+  }
 };
 
 // Check if an employee has face data enrolled

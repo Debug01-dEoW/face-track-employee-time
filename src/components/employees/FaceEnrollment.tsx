@@ -1,11 +1,15 @@
 
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Camera, RefreshCw, AlertTriangle } from "lucide-react";
 import CameraView from "./face/CameraView";
 import ProgressIndicator from "./face/ProgressIndicator";
 import EnrollmentInstructions from "./face/EnrollmentInstructions";
 import { useFaceCapture } from "./face/useFaceCapture";
+import { checkServiceAvailability, enrollFace } from "@/services/FaceRecognitionService";
+import { toast } from "sonner";
 
 interface FaceEnrollmentProps {
   employeeId: number;
@@ -15,6 +19,46 @@ interface FaceEnrollmentProps {
 }
 
 const FaceEnrollment = ({ employeeId, employeeName, onComplete, onCancel }: FaceEnrollmentProps) => {
+  const [serverAvailable, setServerAvailable] = useState<boolean | null>(null);
+  
+  // Check service availability on component mount
+  useEffect(() => {
+    const checkServer = async () => {
+      const isAvailable = await checkServiceAvailability();
+      setServerAvailable(isAvailable);
+      
+      if (!isAvailable) {
+        toast.error("Face recognition server is not available", {
+          description: "Please make sure the Python backend is running"
+        });
+      }
+    };
+    
+    checkServer();
+  }, []);
+
+  const handleEnrollmentComplete = async (faceData: string) => {
+    try {
+      // First try to enroll with the Python backend
+      if (serverAvailable) {
+        const success = await enrollFace(employeeId, employeeName, faceData);
+        
+        if (success) {
+          toast.success("Face data successfully enrolled with recognition server");
+        } else {
+          toast.error("Failed to enroll with recognition server");
+        }
+      }
+      
+      // Always complete locally as well
+      onComplete(faceData);
+    } catch (error) {
+      console.error("Error during enrollment:", error);
+      toast.error("An error occurred during enrollment");
+      onComplete(faceData); // Still complete with local data
+    }
+  };
+  
   const { 
     videoRef, 
     canvasRef, 
@@ -22,9 +66,7 @@ const FaceEnrollment = ({ employeeId, employeeName, onComplete, onCancel }: Face
     progress, 
     currentDirection, 
     startCapture 
-  } = useFaceCapture((faceData) => {
-    onComplete(faceData);
-  });
+  } = useFaceCapture(handleEnrollmentComplete);
 
   return (
     <Card className="w-full max-w-xl mx-auto">
@@ -36,6 +78,15 @@ const FaceEnrollment = ({ employeeId, employeeName, onComplete, onCancel }: Face
       </CardHeader>
       
       <CardContent className="space-y-6">
+        {serverAvailable === false && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Face recognition server is not available. Enrollment will use local storage only.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <CameraView 
           videoRef={videoRef}
           isCapturing={isCapturing} 

@@ -1,73 +1,97 @@
-# Welcome to your Lovable project
 
-## Project info
+# FaceTrack - Face Recognition Attendance System
 
-**URL**: https://lovable.dev/projects/59a3a84e-d0d8-491c-a992-837905ab5466
+## Overview
+FaceTrack is a web-based attendance tracking system that uses facial recognition for employee check-in and check-out.
 
-## How can I edit this code?
+## Features
+- Face enrollment for employees
+- Face recognition for attendance marking
+- Attendance history and reporting
+- Dark mode support
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/59a3a84e-d0d8-491c-a992-837905ab5466) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
+## Technical Stack
+### Frontend
+- React with TypeScript
 - Tailwind CSS
+- Shadcn UI components
+- React Router
 
-## How can I deploy this project?
+### Backend (Python)
+- Flask for the REST API
+- face_recognition library (based on dlib)
+- NumPy for numerical operations
+- Pillow for image processing
 
-Simply open [Lovable](https://lovable.dev/projects/59a3a84e-d0d8-491c-a992-837905ab5466) and click on Share -> Publish.
+## Setup Instructions
 
-## Can I connect a custom domain to my Lovable project?
+### Prerequisites
+- Node.js (v18+)
+- Python 3.7+ (for the face recognition backend)
 
-Yes, you can!
+### Frontend Setup
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Start the development server:
+   ```
+   npm run dev
+   ```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Python Backend Setup
+1. Install the required Python libraries:
+   ```
+   pip install flask face_recognition numpy Pillow flask-cors
+   ```
+   Note: Installing the face_recognition library may require some additional steps on certain operating systems. 
+   
+   On Ubuntu/Debian:
+   ```
+   sudo apt-get install -y build-essential cmake
+   sudo apt-get install -y libopenblas-dev liblapack-dev
+   sudo apt-get install -y python3-dev python3-pip
+   pip install dlib
+   pip install face_recognition
+   ```
+   
+   On Windows:
+   - Install Visual Studio with C++ development tools
+   - Then install dlib through pip
+   
+   On macOS:
+   ```
+   brew install cmake
+   pip install dlib
+   pip install face_recognition
+   ```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+2. Run the Python face recognition server:
+   ```
+   python face_recognition_server.py
+   ```
+
+3. The server will run on http://localhost:5000 by default
+
+### Browser Compatibility
+For the best face recognition experience:
+- Use Chrome or Edge on Windows
+- Use Safari on macOS
+- Use Chrome on Android
+- Use Safari on iOS
+
+## Face Recognition Flow
+1. **Enrollment**: Captures multiple images of an employee's face from different angles
+2. **Processing**: Extracts facial features and creates encodings for recognition
+3. **Recognition**: Matches captured faces against stored encodings
+
+## System Architecture
+- The React frontend handles UI and user interactions
+- The Python backend processes face recognition tasks
+- Communication happens via RESTful API calls
+- Both local storage and server storage are used for redundancy
+
+## Development Notes
+- The frontend automatically falls back to local mode if the Python backend is unavailable
+- The Python backend stores face encodings in a JSON file for persistence
