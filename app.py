@@ -18,6 +18,21 @@ if not os.path.exists('data'):
 if not os.path.exists('sample_faces'):
     os.makedirs('sample_faces')
 
+# Expose functions to JavaScript
+@eel.expose
+def get_departments():
+    """Get a list of all departments from employee data"""
+    # This would normally come from a database
+    # For now, we'll just return a static list
+    return ["IT", "HR", "Marketing", "Finance", "Operations"]
+
+@eel.expose
+def search_employees(search_term, department_filter, face_data_filter):
+    """Search employees based on filters"""
+    # This would normally query a database
+    # For our simple app, we'll just return success since filtering is done client-side
+    return {"success": True}
+
 if __name__ == '__main__':
     try:
         # Start the Eel application
@@ -37,7 +52,7 @@ if __name__ == '__main__':
                 sys.exit(0)
         
         # Otherwise, start the web interface
-        eel.start('index.html', size=(1000, 800), port=8000)
+        eel.start('index.html', size=(1200, 800), port=8000)
     except KeyboardInterrupt:
         print("\nShutting down...")
     except Exception as e:

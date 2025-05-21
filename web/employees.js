@@ -1,4 +1,3 @@
-
 document.addEventListener("DOMContentLoaded", function() {
     // Load and display employees
     loadEmployees();
@@ -14,32 +13,87 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // Setup face enrollment
     setupFaceEnrollment();
+    
+    // Setup search and filters
+    setupSearchAndFilters();
 });
 
 // Global variables for face enrollment
 let enrollmentActive = false;
 let capturedSamples = 0;
 let maxSamples = 10;
+let allEmployees = []; // Store all employees for filtering
 
-// Load employees from storage
-function loadEmployees() {
+// Setup search and filters
+function setupSearchAndFilters() {
+    const searchInput = document.getElementById('employee-search');
+    const searchBtn = document.getElementById('search-btn');
+    const departmentFilter = document.getElementById('department-filter');
+    const faceDataFilter = document.getElementById('face-data-filter');
+    const resetBtn = document.getElementById('reset-filters');
+    
+    // Search on input
+    searchInput.addEventListener('input', applyFilters);
+    
+    // Search on button click
+    searchBtn.addEventListener('click', applyFilters);
+    
+    // Filter on select change
+    departmentFilter.addEventListener('change', applyFilters);
+    faceDataFilter.addEventListener('change', applyFilters);
+    
+    // Reset filters
+    resetBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        departmentFilter.value = '';
+        faceDataFilter.value = '';
+        applyFilters();
+    });
+}
+
+// Apply all filters and search
+function applyFilters() {
+    const searchTerm = document.getElementById('employee-search').value.toLowerCase();
+    const departmentValue = document.getElementById('department-filter').value;
+    const faceDataValue = document.getElementById('face-data-filter').value;
+    
+    const filteredEmployees = allEmployees.filter(employee => {
+        // Search term filter
+        const nameMatch = employee.name.toLowerCase().includes(searchTerm);
+        const idMatch = employee.id.toLowerCase().includes(searchTerm);
+        const departmentMatch = (employee.department || '').toLowerCase().includes(searchTerm);
+        const positionMatch = (employee.position || '').toLowerCase().includes(searchTerm);
+        const searchMatch = nameMatch || idMatch || departmentMatch || positionMatch;
+        
+        // Department filter
+        const deptMatch = !departmentValue || (employee.department === departmentValue);
+        
+        // Face data filter
+        let faceMatch = true;
+        if (faceDataValue === 'yes') {
+            faceMatch = (employee.samples && employee.samples > 0);
+        } else if (faceDataValue === 'no') {
+            faceMatch = (!employee.samples || employee.samples <= 0);
+        }
+        
+        return searchMatch && deptMatch && faceMatch;
+    });
+    
+    displayEmployees(filteredEmployees);
+    
+    // Show/hide no results message
+    const noResults = document.getElementById('no-results');
+    if (filteredEmployees.length === 0) {
+        noResults.style.display = 'block';
+    } else {
+        noResults.style.display = 'none';
+    }
+}
+
+// Display employees in table
+function displayEmployees(employees) {
     const employeesTable = document.getElementById('employees-table');
     if (!employeesTable) return;
-    
-    let employees = [];
-    
-    // Try to load from localStorage
-    const storedEmployees = localStorage.getItem('employees');
-    if (storedEmployees) {
-        employees = JSON.parse(storedEmployees);
-    } else {
-        // If no employees in storage, use some sample data
-        employees = [
-            { id: '1001', name: 'John Doe', department: 'IT', position: 'Developer', samples: 5 },
-            { id: '1002', name: 'Jane Smith', department: 'HR', position: 'Manager', samples: 0 },
-        ];
-        localStorage.setItem('employees', JSON.stringify(employees));
-    }
     
     // Clear existing table rows
     employeesTable.innerHTML = '';
@@ -86,6 +140,55 @@ function loadEmployees() {
     
     document.querySelectorAll('.btn-enroll').forEach(button => {
         button.addEventListener('click', handleEnrollClick);
+    });
+}
+
+// Load employees from storage
+function loadEmployees() {
+    let employees = [];
+    
+    // Try to load from localStorage
+    const storedEmployees = localStorage.getItem('employees');
+    if (storedEmployees) {
+        employees = JSON.parse(storedEmployees);
+    } else {
+        // If no employees in storage, use some sample data
+        employees = [
+            { id: '1001', name: 'John Doe', department: 'IT', position: 'Developer', samples: 5 },
+            { id: '1002', name: 'Jane Smith', department: 'HR', position: 'Manager', samples: 0 },
+        ];
+        localStorage.setItem('employees', JSON.stringify(employees));
+    }
+    
+    // Store all employees in global variable
+    allEmployees = employees;
+    
+    // Display employees
+    displayEmployees(employees);
+    
+    // Populate department filter with unique departments
+    populateDepartmentFilter(employees);
+}
+
+// Populate department filter with unique departments
+function populateDepartmentFilter(employees) {
+    const departmentFilter = document.getElementById('department-filter');
+    if (!departmentFilter) return;
+    
+    // Clear existing options except the first one
+    while (departmentFilter.options.length > 1) {
+        departmentFilter.remove(1);
+    }
+    
+    // Get unique departments
+    const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+    
+    // Add options
+    departments.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept;
+        option.textContent = dept;
+        departmentFilter.appendChild(option);
     });
 }
 
@@ -205,7 +308,13 @@ function handleFormSubmit(event) {
     
     // Close modal and refresh employee list
     document.getElementById('employee-modal').style.display = 'none';
-    loadEmployees();
+    
+    // Update global allEmployees variable and redisplay
+    allEmployees = employees;
+    displayEmployees(employees);
+    
+    // Re-populate department filter with updated departments
+    populateDepartmentFilter(employees);
 }
 
 // Handle edit button click
