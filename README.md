@@ -1,4 +1,5 @@
 
+
 # FaceTrack - Face Recognition Attendance System
 
 ## Overview
@@ -135,3 +136,4 @@ For the best face recognition experience:
 - If face recognition is not working, check that the server is running and accessible
 - For camera issues, ensure browser permissions are granted
 - Check browser console logs and Python server logs for any errors
+
