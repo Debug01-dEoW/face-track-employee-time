@@ -109,7 +109,7 @@ function recognizeFace() {
   // Hide previous results
   document.getElementById('recognition-result').style.display = 'none';
   
-  // Call Eel function to recognize face
+  // Call Python function to recognize face
   eel.eel_recognize_face(imageData)(function(response) {
     recognitionActive = false;
     document.getElementById('take-snapshot').disabled = false;
@@ -122,19 +122,70 @@ function recognizeFace() {
     // Show result container
     document.getElementById('recognition-result').style.display = 'block';
     
-    if (response.person) {
-      // Match found
-      document.getElementById('recognition-success').style.display = 'block';
-      document.getElementById('recognition-failure').style.display = 'none';
-      
-      document.getElementById('recognized-name').textContent = response.person.name;
-      document.getElementById('recognition-time').textContent = new Date().toLocaleTimeString();
-      document.getElementById('recognition-status').textContent = `Welcome, ${response.person.name}!`;
+    if (response.detected) {
+      if (response.recognized && response.person) {
+        // Match found
+        document.getElementById('recognition-success').style.display = 'block';
+        document.getElementById('recognition-failure').style.display = 'none';
+        
+        const name = response.person.name;
+        const details = response.person.details || {};
+        
+        document.getElementById('recognized-name').textContent = name;
+        document.getElementById('recognition-time').textContent = new Date().toLocaleTimeString();
+        document.getElementById('recognition-status').textContent = `Welcome, ${name}!`;
+        
+        // If we have additional details, display them
+        if (document.getElementById('employee-details')) {
+          let detailsHtml = `
+            <div class="detail-item"><span>Name:</span> ${name}</div>
+          `;
+          
+          if (details.department) {
+            detailsHtml += `<div class="detail-item"><span>Department:</span> ${details.department}</div>`;
+          }
+          
+          if (details.position) {
+            detailsHtml += `<div class="detail-item"><span>Position:</span> ${details.position}</div>`;
+          }
+          
+          document.getElementById('employee-details').innerHTML = detailsHtml;
+          document.getElementById('employee-details').style.display = 'block';
+        }
+        
+        // Record attendance in local storage for display on dashboard
+        const attendanceRecord = {
+          employeeName: name,
+          timestamp: new Date().toISOString(),
+          type: "IN"
+        };
+        
+        let recentActivity = JSON.parse(localStorage.getItem('recent_activity') || '[]');
+        recentActivity.unshift(attendanceRecord);
+        if (recentActivity.length > 10) recentActivity = recentActivity.slice(0, 10);
+        localStorage.setItem('recent_activity', JSON.stringify(recentActivity));
+        
+      } else {
+        // No match
+        document.getElementById('recognition-success').style.display = 'none';
+        document.getElementById('recognition-failure').style.display = 'block';
+        document.getElementById('recognition-status').textContent = 'No matching face found';
+        
+        if (document.getElementById('employee-details')) {
+          document.getElementById('employee-details').style.display = 'none';
+        }
+      }
     } else {
-      // No match
+      // No face detected
       document.getElementById('recognition-success').style.display = 'none';
       document.getElementById('recognition-failure').style.display = 'block';
-      document.getElementById('recognition-status').textContent = 'No matching face found';
+      document.getElementById('recognition-failure').querySelector('h3').textContent = 'No Face Detected';
+      document.getElementById('recognition-failure').querySelector('p').textContent = 'Please position your face in the frame and try again.';
+      document.getElementById('recognition-status').textContent = 'No face detected';
+      
+      if (document.getElementById('employee-details')) {
+        document.getElementById('employee-details').style.display = 'none';
+      }
     }
   });
 }

@@ -96,6 +96,37 @@
                     </form>
                 </div>
             </div>
+            
+            <!-- New Face Enrollment Modal -->
+            <div id="face-enrollment-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal">&times;</span>
+                    <h2>Face Enrollment</h2>
+                    <p id="enrollment-employee-name" class="text-center bold"></p>
+                    
+                    <div class="camera-container">
+                        <video id="enrollment-video" autoplay playsinline></video>
+                        <canvas id="enrollment-canvas" style="display: none;"></canvas>
+                        <div id="enrollment-instructions" class="instructions">Click "Start Enrollment" to begin face capture</div>
+                        <div id="enrollment-direction" class="direction-prompt"></div>
+                    </div>
+                    
+                    <div id="enrollment-progress-container" class="progress-container">
+                        <div class="progress-label">
+                            <span>Progress:</span>
+                            <span id="enrollment-progress-percent">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="enrollment-progress-bar" class="progress-bar-inner" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="camera-controls">
+                        <button type="button" id="start-enrollment" class="primary-btn">Start Enrollment</button>
+                        <button type="button" id="stop-enrollment" class="secondary-btn" style="display: none;">Stop</button>
+                    </div>
+                </div>
+            </div>
         </main>
         
         <footer>

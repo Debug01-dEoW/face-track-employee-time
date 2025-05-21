@@ -1,4 +1,3 @@
-
 /* Global Styles */
 :root {
   --primary-color: #3b82f6;
@@ -388,7 +387,7 @@ body.dark-mode .modal-content {
 .progress-bar-inner {
   height: 100%;
   background-color: var(--primary-color);
-  transition: width 0.3s ease;
+  transition: width 0.3s ease-in-out;
 }
 
 /* Recognition result */
@@ -450,6 +449,45 @@ body.dark-mode .filters {
 .filter-group {
   flex: 1;
   min-width: 200px;
+}
+
+/* Employee details section */
+.employee-details {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    text-align: left;
+}
+
+.employee-details .detail-item {
+    margin-bottom: 8px;
+}
+
+.employee-details .detail-item span {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+/* Face enrollment modal */
+.face-btn {
+    margin-right: 5px;
+}
+
+#enrollment-progress-container {
+    margin: 15px 0;
+}
+
+#enrollment-video {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+#enrollment-direction {
+    font-weight: bold;
+    margin-top: 10px;
+    color: #4a89dc;
 }
 
 /* Footer */
