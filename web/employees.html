@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,132 +26,45 @@
         </nav>
         
         <main>
-            <div class="employees">
-                <div class="header-actions">
-                    <h2>Employees</h2>
+            <div class="employees-container">
+                <h2>Employees Management</h2>
+                
+                <div class="search-filters">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Search by name...">
+                        <button id="search-btn" class="btn">Search</button>
+                    </div>
+                    
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="department-filter">Department:</label>
+                            <select id="department-filter">
+                                <option value="">All Departments</option>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="face-data-filter">Face Data:</label>
+                            <select id="face-data-filter">
+                                <option value="">All</option>
+                                <option value="yes">Has Face Data</option>
+                                <option value="no">No Face Data</option>
+                            </select>
+                        </div>
+                        
+                        <button id="reset-btn" class="btn secondary-btn">Reset</button>
+                    </div>
+                </div>
+                
+                <div class="employees-header">
+                    <h3>Employee List</h3>
                     <button id="add-employee-btn" class="primary-btn">Add Employee</button>
                 </div>
                 
-                <div class="search-filter-container">
-                    <div class="search-box">
-                        <input type="text" id="employee-search" placeholder="Search employees...">
-                        <button id="search-btn"><span class="search-icon">🔍</span></button>
-                    </div>
-                    <div class="filters">
-                        <select id="department-filter" class="filter-select">
-                            <option value="">All Departments</option>
-                            <option value="IT">IT</option>
-                            <option value="HR">HR</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="Finance">Finance</option>
-                            <option value="Operations">Operations</option>
-                        </select>
-                        <select id="face-data-filter" class="filter-select">
-                            <option value="">All Face Data</option>
-                            <option value="yes">Has Face Data</option>
-                            <option value="no">No Face Data</option>
-                        </select>
-                        <button id="reset-filters" class="secondary-btn">Reset</button>
-                    </div>
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Department</th>
-                            <th>Position</th>
-                            <th>Face Samples</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="employees-table">
-                        <!-- Employees will be populated via JavaScript -->
-                    </tbody>
-                </table>
-                
-                <div id="no-results" class="no-results" style="display: none;">
-                    <p>No employees found matching your filters</p>
-                </div>
-            </div>
-            
-            <div id="employee-modal" class="modal">
-                <div class="modal-content">
-                    <span class="close-modal">&times;</span>
-                    <h2>Add New Employee</h2>
-                    <form id="employee-form">
-                        <div class="form-group">
-                            <label for="emp-id">Employee ID</label>
-                            <input type="text" id="emp-id" name="emp-id" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="emp-name">Name</label>
-                            <input type="text" id="emp-name" name="emp-name" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="emp-department">Department</label>
-                            <input type="text" id="emp-department" name="emp-department">
-                        </div>
-                        <div class="form-group">
-                            <label for="emp-position">Position</label>
-                            <input type="text" id="emp-position" name="emp-position">
-                        </div>
-                        <div id="face-capture-container" class="form-group">
-                            <h3>Face Enrollment</h3>
-                            <div class="camera-container">
-                                <video id="video" autoplay playsinline></video>
-                                <canvas id="canvas" style="display: none;"></canvas>
-                                <div id="capture-instructions" class="instructions">Click "Start Capture" to begin face enrollment</div>
-                                <div id="current-direction" class="direction-prompt"></div>
-                                <div id="progress-container" style="display: none;">
-                                    <div class="progress-label">
-                                        <span>Progress:</span>
-                                        <span id="progress-percent">0%</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div id="progress-bar-inner" class="progress-bar-inner"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="camera-controls">
-                                <button type="button" id="start-capture" class="secondary-btn">Start Capture</button>
-                                <button type="button" id="reset-capture" class="secondary-btn" style="display: none;">Reset</button>
-                            </div>
-                        </div>
-                        <button type="submit" class="primary-btn">Save Employee</button>
-                    </form>
-                </div>
-            </div>
-            
-            <!-- Face Enrollment Modal -->
-            <div id="face-enrollment-modal" class="modal">
-                <div class="modal-content">
-                    <span class="close-modal">&times;</span>
-                    <h2>Face Enrollment</h2>
-                    <p id="enrollment-employee-name" class="text-center bold"></p>
-                    
-                    <div class="camera-container">
-                        <video id="enrollment-video" autoplay playsinline></video>
-                        <canvas id="enrollment-canvas" style="display: none;"></canvas>
-                        <div id="enrollment-instructions" class="instructions">Click "Start Enrollment" to begin face capture</div>
-                        <div id="enrollment-direction" class="direction-prompt"></div>
-                    </div>
-                    
-                    <div id="enrollment-progress-container" class="progress-container">
-                        <div class="progress-label">
-                            <span>Progress:</span>
-                            <span id="enrollment-progress-percent">0%</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div id="enrollment-progress-bar" class="progress-bar-inner" style="width: 0%"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="camera-controls">
-                        <button type="button" id="start-enrollment" class="primary-btn">Start Enrollment</button>
-                        <button type="button" id="stop-enrollment" class="secondary-btn" style="display: none;">Stop</button>
-                    </div>
+                <div id="employees-list" class="employees-list">
+                    <!-- Will be populated dynamically -->
+                    <div class="loading-indicator">Loading employees...</div>
                 </div>
             </div>
         </main>
@@ -159,7 +73,7 @@
             <p>&copy; 2025 FaceTrack - Face Recognition Attendance System</p>
         </footer>
     </div>
-    
+
     <script src="/eel.js"></script>
     <script src="main.js"></script>
     <script src="employees.js"></script>

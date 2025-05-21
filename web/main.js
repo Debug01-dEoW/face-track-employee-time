@@ -1,111 +1,62 @@
-
-// Common JavaScript functions for the FaceTrack web interface
-
-// Handle theme toggling
-document.addEventListener("DOMContentLoaded", function() {
-    // Initialize theme from localStorage
-    const currentTheme = localStorage.getItem('theme') || 'light';
-    document.body.classList.add(currentTheme);
-    
-    // Set up theme toggle button
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up theme toggle
     const themeToggleBtn = document.getElementById('theme-toggle-btn');
     if (themeToggleBtn) {
-        themeToggleBtn.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
         themeToggleBtn.addEventListener('click', function() {
-            toggleTheme();
+            document.body.classList.toggle('light-theme');
+            
+            if (document.body.classList.contains('light-theme')) {
+                themeToggleBtn.textContent = '☀️';
+                localStorage.setItem('theme', 'light');
+            } else {
+                themeToggleBtn.textContent = '🌙';
+                localStorage.setItem('theme', 'dark');
+            }
         });
+        
+        // Check saved theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+            document.body.classList.add('light-theme');
+            themeToggleBtn.textContent = '☀️';
+        }
     }
     
-    // Handle console messages from Eel
-    if (window.eel) {
-        eel.expose(console.log);
-        eel.expose(console.error);
+    // Other common functionality
+    console.log('FaceTrack system initialized');
+    
+    // Check for Python backend availability
+    if (typeof eel !== 'undefined') {
+        console.log('Eel framework detected - Python backend is available');
+    } else {
+        console.warn('Eel framework not detected - Python backend may not be available');
+        // We could show a warning here if needed
     }
 });
 
-// Toggle between light and dark theme
-function toggleTheme() {
-    if (document.body.classList.contains('dark')) {
-        document.body.classList.remove('dark');
-        document.body.classList.add('light');
-        localStorage.setItem('theme', 'light');
-        if (document.getElementById('theme-toggle-btn')) {
-            document.getElementById('theme-toggle-btn').textContent = '🌙';
-        }
+// Utility function to format dates
+function formatDateTime(isoString) {
+    if (!isoString) return '';
+    
+    const date = new Date(isoString);
+    
+    // Format: YYYY-MM-DD HH:MM:SS
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+// Utility function to show error messages
+function showError(message, elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.innerHTML = `<div class="error-message">${message}</div>`;
     } else {
-        document.body.classList.remove('light');
-        document.body.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-        if (document.getElementById('theme-toggle-btn')) {
-            document.getElementById('theme-toggle-btn').textContent = '☀️';
-        }
+        alert(message);
     }
 }
-
-// Format a date string
-function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-}
-
-// Helper function to show an alert/notification
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.classList.add('show');
-    }, 10);
-    
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-            document.body.removeChild(notification);
-        }, 300);
-    }, 3000);
-}
-
-// Helper function to add CSS styles for notifications if not already present
-function addNotificationStyles() {
-    if (!document.getElementById('notification-styles')) {
-        const style = document.createElement('style');
-        style.id = 'notification-styles';
-        style.innerHTML = `
-            .notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 10px 20px;
-                border-radius: 5px;
-                color: white;
-                opacity: 0;
-                transform: translateY(-20px);
-                transition: all 0.3s ease;
-                z-index: 1000;
-            }
-            .notification.show {
-                opacity: 1;
-                transform: translateY(0);
-            }
-            .notification.info {
-                background-color: #3498db;
-            }
-            .notification.success {
-                background-color: #2ecc71;
-            }
-            .notification.error {
-                background-color: #e74c3c;
-            }
-            .notification.warning {
-                background-color: #f39c12;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
-
-// Initialize notification styles
-addNotificationStyles();

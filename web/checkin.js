@@ -167,6 +167,13 @@ function recognizeFace() {
         if (recentActivity.length > 10) recentActivity = recentActivity.slice(0, 10);
         localStorage.setItem('recent_activity', JSON.stringify(recentActivity));
         
+        // Send attendance record to Python backend
+        try {
+          eel.record_attendance(name, attendanceRecord.timestamp, "IN");
+        } catch (e) {
+          console.error("Could not record attendance:", e);
+        }
+        
       } else {
         // No match
         document.getElementById('recognition-success').style.display = 'none';
@@ -190,4 +197,11 @@ function recognizeFace() {
       }
     }
   });
+}
+
+// Record attendance function (will be called from Python)
+eel.expose(updateAttendanceStatus);
+function updateAttendanceStatus(success, message) {
+  console.log("Attendance status:", success, message);
+  // You can use this to show a success/fail message on the page if needed
 }

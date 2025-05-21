@@ -10,6 +10,8 @@ from PIL import Image
 import threading
 import time
 import json
+import xml.etree.ElementTree as ET
+from datetime import datetime
 
 # Global variables for face recognition
 face_recognition_data = {
@@ -65,15 +67,25 @@ def eel_recognize_face(image_data, confidence_threshold=0.65):
                 return {"success": False, "error": "Face recognition data not available. Please enroll faces first."}
         
         # Decode image from base64
-        image_data = image_data.split(',')[1]
-        image_bytes = base64.b64decode(image_data)
+        try:
+            # Handle both full data URLs and base64 strings
+            if "base64," in image_data:
+                image_data = image_data.split(',')[1]
+            image_bytes = base64.b64decode(image_data)
+        except Exception as e:
+            print(f"Error decoding base64 image: {e}")
+            return {"success": False, "error": f"Invalid image data: {str(e)}"}
         
         # Convert to OpenCV format
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if frame is None:
-            return {"success": False, "error": "Failed to decode image"}
+        try:
+            nparr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            if frame is None:
+                return {"success": False, "error": "Failed to decode image"}
+        except Exception as e:
+            print(f"Error converting image to OpenCV format: {e}")
+            return {"success": False, "error": f"Image processing error: {str(e)}"}
             
         # Create cascade classifier
         cascade_path = os.path.join('user data', 'haarcascade_frontalface_default.xml')
@@ -157,7 +169,6 @@ def eel_recognize_face(image_data, confidence_threshold=0.65):
             try:
                 # Load employees from XML and find the matching one
                 if os.path.exists(employees_file):
-                    import xml.etree.ElementTree as ET
                     tree = ET.parse(employees_file)
                     root = tree.getroot()
                     
@@ -207,7 +218,6 @@ def eel_recognize_face(image_data, confidence_threshold=0.65):
                 
                 if not os.path.exists(attendance_file):
                     # Create new file
-                    import xml.etree.ElementTree as ET
                     root = ET.Element("attendance_records")
                     tree = ET.ElementTree(root)
                     tree.write(attendance_file)
@@ -238,3 +248,59 @@ def eel_recognize_face(image_data, confidence_threshold=0.65):
     except Exception as e:
         print(f"Error in face recognition: {e}")
         return {"success": False, "error": str(e)}
+
+@eel.expose
+def record_attendance(name, timestamp, record_type="IN"):
+    """Record attendance in XML file"""
+    try:
+        # Create data directory if it doesn't exist
+        os.makedirs("data", exist_ok=True)
+        
+        # Create or update attendance.xml
+        attendance_file = "data/attendance.xml"
+        
+        if not os.path.exists(attendance_file):
+            # Create new file
+            root = ET.Element("attendance_records")
+            tree = ET.ElementTree(root)
+            tree.write(attendance_file)
+        
+        # Add new record
+        tree = ET.parse(attendance_file)
+        root = tree.getroot()
+        
+        record = ET.SubElement(root, "record")
+        ET.SubElement(record, "employeeName").text = name
+        ET.SubElement(record, "timestamp").text = timestamp
+        ET.SubElement(record, "type").text = record_type
+        
+        tree.write(attendance_file)
+        
+        # Notify JavaScript
+        eel.updateAttendanceStatus(True, f"Attendance recorded for {name}")
+        
+        return {"success": True}
+    except Exception as e:
+        print(f"Error recording attendance: {e}")
+        # Notify JavaScript
+        eel.updateAttendanceStatus(False, f"Error recording attendance: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@eel.expose
+def recognize_face():
+    """Command line interface for face recognition"""
+    try:
+        # Initialize face recognition if not already done
+        if not face_recognition_data["initialized"]:
+            if not initialize_face_recognition():
+                print("Face recognition data not available. Please enroll faces first.")
+                return False
+        
+        # Rest of the command line recognition code...
+        # This is just a stub - the actual implementation would include
+        # camera initialization and face recognition loop
+        print("Command line recognition started")
+        return True
+    except Exception as e:
+        print(f"Error in recognizing face: {e}")
+        return False

@@ -31,6 +31,7 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
   const startCamera = async () => {
     setIsProcessing(true);
     try {
+      console.log('Requesting camera access...');
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           width: { ideal: 640 },
@@ -39,8 +40,16 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
         } 
       });
       
+      console.log('Camera access granted!');
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded, playing video');
+          videoRef.current?.play()
+            .then(() => console.log('Video playback started'))
+            .catch(err => console.error('Error playing video:', err));
+        };
         setIsStreaming(true);
       }
     } catch (err) {
@@ -56,6 +65,7 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
       setIsProcessing(true);
       
       try {
+        console.log('Capturing image from video stream...');
         const video = videoRef.current;
         const canvas = canvasRef.current;
         
@@ -74,17 +84,21 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
         
         // Convert to data URL
         const imageSrc = canvas.toDataURL('image/jpeg', 0.9);
+        console.log('Image captured successfully');
         
         // Process using local face recognition
+        console.log('Attempting to recognize face...');
         const recognizedPerson = await findEmployeeByFace(imageSrc);
         
         // Pass the image and recognition result to the parent component
         if (recognizedPerson) {
+          console.log('Face recognized:', recognizedPerson.employeeName);
           onCapture(imageSrc, {
             id: recognizedPerson.employeeId.toString(),
             name: recognizedPerson.employeeName
           });
         } else {
+          console.log('Face not recognized');
           onCapture(imageSrc, null);
         }
         
@@ -160,7 +174,6 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
               playsInline 
               muted
               className="w-full h-auto"
-              onLoadedMetadata={() => videoRef.current?.play()}
             />
             
             <div className="absolute bottom-4 left-0 right-0 flex justify-center">
