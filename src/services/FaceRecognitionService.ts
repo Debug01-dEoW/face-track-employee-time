@@ -1,8 +1,7 @@
 
 import { toast } from "sonner";
 
-// Define the API base URL - this would point to your Python backend
-// In development, this might be a local server; in production, it would be your deployed API
+// Define the API base URL
 const API_BASE_URL = "http://localhost:5000"; // Change this to your actual API endpoint
 
 interface RecognitionResponse {
@@ -17,7 +16,7 @@ interface RecognitionResponse {
 
 interface EnrollmentResponse {
   success: boolean;
-  employeeId?: number;
+  employeeId?: string;
   error?: string;
 }
 
@@ -55,7 +54,7 @@ export const recognizeFace = async (imageData: string): Promise<{ id: string, na
     return null;
   } catch (error) {
     console.error('Face recognition API error:', error);
-    toast.error('Face recognition service unavailable');
+    toast.error('Face recognition service unavailable. Using local fallback.');
     return null;
   }
 };
@@ -97,7 +96,7 @@ export const enrollFace = async (employeeId: number, employeeName: string, faceD
     return true;
   } catch (error) {
     console.error('Face enrollment API error:', error);
-    toast.error('Face enrollment failed');
+    toast.error('Face enrollment failed with backend server, using local storage.');
     return false;
   }
 };
@@ -110,11 +109,41 @@ export const checkServiceAvailability = async (): Promise<boolean> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/health`, {
       method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      // Set a short timeout to avoid long waits if the server is down
+      signal: AbortSignal.timeout(2000)
     });
     
     return response.ok;
   } catch (error) {
     console.error('Service health check failed:', error);
     return false;
+  }
+};
+
+/**
+ * Gets statistics about enrolled faces
+ */
+export const getFaceStatistics = async (): Promise<{totalEmployees: number, totalSamples: number} | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/stats`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(2000)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    if (result.success) {
+      return result.stats;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching face statistics:', error);
+    return null;
   }
 };

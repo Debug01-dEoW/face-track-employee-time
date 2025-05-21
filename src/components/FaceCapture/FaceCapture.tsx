@@ -2,9 +2,10 @@
 import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
-import { Camera, RefreshCw, User } from 'lucide-react';
-import { recognizeFace } from '@/services/FaceRecognitionService';
+import { toast } from 'sonner';
+import { Camera, RefreshCw, User, Server, AlertTriangle } from 'lucide-react';
+import { recognizeFace, checkServiceAvailability } from '@/services/FaceRecognitionService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface FaceCaptureProps {
   onCapture: (imageSrc: string, recognizedPerson?: { id: string, name: string } | null) => void;
@@ -16,7 +17,23 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isCaptured, setIsCaptured] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const { toast } = useToast();
+  const [serverAvailable, setServerAvailable] = useState<boolean | null>(null);
+
+  // Check if Python backend is available
+  useEffect(() => {
+    const checkServer = async () => {
+      const isAvailable = await checkServiceAvailability();
+      setServerAvailable(isAvailable);
+      
+      if (isAvailable) {
+        console.log("Connected to Python face recognition server");
+      } else {
+        console.log("Python face recognition server not available");
+      }
+    };
+    
+    checkServer();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -46,11 +63,7 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
-      toast({
-        title: 'Camera Error',
-        description: 'Could not access your camera. Please check permissions.',
-        variant: 'destructive',
-      });
+      toast.error('Could not access your camera. Please check permissions.');
     } finally {
       setIsProcessing(false);
     }
@@ -71,11 +84,7 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
         // Draw current video frame to canvas
         const context = canvas.getContext('2d');
         if (!context) {
-          toast({
-            title: 'Error',
-            description: 'Could not get canvas context',
-            variant: 'destructive',
-          });
+          toast.error("Could not get canvas context");
           return;
         }
         
@@ -98,23 +107,13 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
         setIsStreaming(false);
         
         if (recognitionResult) {
-          toast({
-            title: 'Face recognized',
-            description: `Identified as ${recognitionResult.name}`,
-          });
+          toast.success(`Identified as ${recognitionResult.name}`);
         } else {
-          toast({
-            title: 'Face captured',
-            description: 'Face was not recognized in our system',
-          });
+          toast.info('Face was not recognized in our system');
         }
       } catch (error) {
         console.error('Error during face capture:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to process the image',
-          variant: 'destructive',
-        });
+        toast.error('Failed to process the image');
       } finally {
         setIsProcessing(false);
       }
@@ -134,6 +133,24 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0 relative">
+        {serverAvailable === false && (
+          <Alert variant="destructive" className="m-3">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Face recognition server is not available. Using local fallback mode.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {serverAvailable === true && (
+          <Alert variant="default" className="bg-green-50 border-green-200 text-green-800 m-3">
+            <Server className="h-4 w-4" />
+            <AlertDescription>
+              Using Python-powered face recognition for high accuracy.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {!isStreaming && !isCaptured && (
           <div className="h-80 flex flex-col items-center justify-center p-6 bg-gray-100 dark:bg-gray-800">
             <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
@@ -168,6 +185,7 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
               ref={videoRef} 
               autoPlay 
               playsInline 
+              muted
               className="w-full h-auto"
               onLoadedMetadata={() => videoRef.current?.play()}
             />

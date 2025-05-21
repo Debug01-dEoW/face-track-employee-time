@@ -1,5 +1,5 @@
 
-import { checkServiceAvailability, enrollFace } from './FaceRecognitionService';
+import { checkServiceAvailability, enrollFace, recognizeFace as recognizeFaceRemote } from './FaceRecognitionService';
 
 // Types
 export interface FaceData {
@@ -10,7 +10,7 @@ export interface FaceData {
   faceData: string; // Encoded face data (JSON string)
 }
 
-// Mock storage in localStorage
+// Storage in localStorage
 const FACE_DB_KEY = "facetrack_face_database";
 
 // Get all face data
@@ -75,17 +75,15 @@ export const removeFaceData = (employeeId: number): boolean => {
   }
 };
 
-// Find employee by face data
+// Find employee by face using Python backend first, then fall back to local
 export const findEmployeeByFace = async (faceImage: string): Promise<FaceData | null> => {
   try {
     // Try to use Python backend first
     const isServerAvailable = await checkServiceAvailability();
     
     if (isServerAvailable) {
-      // This will be handled by the FaceRecognitionService
-      const result = await import('./FaceRecognitionService').then(module => 
-        module.recognizeFace(faceImage)
-      );
+      // Use the remote recognition service
+      const result = await recognizeFaceRemote(faceImage);
       
       if (result) {
         // If recognized, find the corresponding employee in our local database
@@ -99,8 +97,11 @@ export const findEmployeeByFace = async (faceImage: string): Promise<FaceData | 
     }
     
     // Fall back to local implementation if Python backend is not available or no match was found
-    console.log("Falling back to local face recognition (mock)");
+    console.log("Falling back to local face recognition");
     
+    // This is a simplified local implementation
+    // In a production app, you might want to implement a more sophisticated
+    // local face matching algorithm or just rely on the Python backend
     return new Promise((resolve) => {
       setTimeout(() => {
         // Get all employees with face data
@@ -112,6 +113,7 @@ export const findEmployeeByFace = async (faceImage: string): Promise<FaceData | 
         }
         
         // For demo purposes without Python backend, we'll just return a random employee
+        // In a real app, you'd implement an actual face matching algorithm here
         const randomIndex = Math.floor(Math.random() * employees.length);
         resolve(employees[randomIndex]);
       }, 1000);

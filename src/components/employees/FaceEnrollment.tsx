@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Camera, RefreshCw, AlertTriangle } from "lucide-react";
+import { Camera, RefreshCw, AlertTriangle, Server } from "lucide-react";
 import CameraView from "./face/CameraView";
 import ProgressIndicator from "./face/ProgressIndicator";
 import EnrollmentInstructions from "./face/EnrollmentInstructions";
@@ -31,6 +31,8 @@ const FaceEnrollment = ({ employeeId, employeeName, onComplete, onCancel }: Face
         toast.error("Face recognition server is not available", {
           description: "Please make sure the Python backend is running"
         });
+      } else {
+        toast.success("Connected to face recognition server");
       }
     };
     
@@ -83,6 +85,15 @@ const FaceEnrollment = ({ employeeId, employeeName, onComplete, onCancel }: Face
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               Face recognition server is not available. Enrollment will use local storage only.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {serverAvailable === true && (
+          <Alert variant="default" className="bg-green-50 border-green-200 text-green-800">
+            <Server className="h-4 w-4" />
+            <AlertDescription>
+              Connected to Python face recognition server for high-accuracy processing.
             </AlertDescription>
           </Alert>
         )}

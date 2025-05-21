@@ -230,9 +230,6 @@ def recognize_face():
             # Use average confidence across all samples
             avg_confidence = sum(confidences) / len(confidences) if confidences else 0
             
-            # Use maximum confidence as an alternative
-            # max_confidence = max(confidences) if confidences else 0
-            
             # Consider a match if confidence exceeds threshold
             if avg_confidence > 0.6 and avg_confidence > best_confidence:
                 best_match = {
