@@ -42,7 +42,7 @@ const Index = () => {
           </div>
         </div>
         <div className="lg:w-1/2 mt-12 lg:mt-0 flex justify-center">
-          <img src="https://images.unsplash.com/photo-1557200134-90327ee9fafa?q=80&w=600&auto=format&fit=crop" alt="Facial Recognition" className="rounded-xl shadow-xl max-w-full h-auto" />
+          
         </div>
       </section>
 
@@ -98,62 +98,10 @@ const Index = () => {
       </section>
 
       {/* Call to action */}
-      <section className="bg-brand-600 py-16">
-        <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold text-white mb-6">Ready to transform your attendance management?</h2>
-          <p className="text-white opacity-80 max-w-2xl mx-auto mb-8">
-            Join thousands of companies that have revolutionized their attendance tracking with FaceTrack.
-          </p>
-          <Link to="/login">
-            <Button className="bg-white text-brand-600 hover:bg-gray-100 px-8 py-3">
-              Get Started Today
-            </Button>
-          </Link>
-        </div>
-      </section>
+      
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between">
-            <div className="mb-6 md:mb-0">
-              <h2 className="text-2xl font-bold mb-4">FaceTrack</h2>
-              <p className="text-gray-400 max-w-xs">
-                Revolutionizing employee attendance with facial recognition technology.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Product</h3>
-                <ul className="text-gray-400 space-y-2">
-                  <li><a href="#" className="hover:text-white">Features</a></li>
-                  <li><a href="#" className="hover:text-white">Pricing</a></li>
-                  <li><a href="#" className="hover:text-white">Testimonials</a></li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Company</h3>
-                <ul className="text-gray-400 space-y-2">
-                  <li><a href="#" className="hover:text-white">About Us</a></li>
-                  <li><a href="#" className="hover:text-white">Careers</a></li>
-                  <li><a href="#" className="hover:text-white">Contact</a></li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Legal</h3>
-                <ul className="text-gray-400 space-y-2">
-                  <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-                  <li><a href="#" className="hover:text-white">Terms of Service</a></li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <hr className="border-gray-700 my-8" />
-          <div className="text-center text-gray-400">
-            <p>&copy; 2025 FaceTrack. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      
     </div>;
 };
 export default Index;
