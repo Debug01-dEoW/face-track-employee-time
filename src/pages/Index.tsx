@@ -1,14 +1,11 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-
 const Index = () => {
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-100">
+  return <div className="min-h-screen bg-gradient-to-b from-white to-gray-100">
       {/* Navigation */}
       <nav className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="text-2xl font-bold text-brand-700">FaceTrack</div>
+          <div className="text-2xl font-bold text-brand-700 bg-slate-50">Attendance system</div>
           <div>
             <Link to="/login">
               <Button variant="outline" className="mr-2">
@@ -45,11 +42,7 @@ const Index = () => {
           </div>
         </div>
         <div className="lg:w-1/2 mt-12 lg:mt-0 flex justify-center">
-          <img 
-            src="https://images.unsplash.com/photo-1557200134-90327ee9fafa?q=80&w=600&auto=format&fit=crop" 
-            alt="Facial Recognition" 
-            className="rounded-xl shadow-xl max-w-full h-auto"
-          />
+          <img src="https://images.unsplash.com/photo-1557200134-90327ee9fafa?q=80&w=600&auto=format&fit=crop" alt="Facial Recognition" className="rounded-xl shadow-xl max-w-full h-auto" />
         </div>
       </section>
 
@@ -161,8 +154,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
