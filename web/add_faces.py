@@ -236,363 +236,63 @@ def save_face_data(username, face_data):
     with open(os.path.join(user_data_dir, 'last_update.txt'), 'a') as f:
         f.write(f"{datetime.now()} - Added {len(face_data)} samples for {username}\n")
 
-def recognize_face(frame_data=None):
-    """Recognize a face in the provided frame data or from webcam."""
-    try:
-        # Check if scikit-learn is installed
-        try:
-            from sklearn.neighbors import KNeighborsClassifier
-        except ImportError:
-            print("Error: scikit-learn is not installed.")
-            return {"success": False, "error": "scikit-learn not installed"}
-        
-        # Check if required files exist
-        names_path = os.path.join(user_data_dir, 'name.pkl')
-        faces_path = os.path.join(user_data_dir, 'faces_data.pkl')
-        
-        if not os.path.exists(names_path) or not os.path.exists(faces_path):
-            print("Error: Face data not found. Please collect face samples first.")
-            return {"success": False, "error": "Face data not found"}
-        
-        # Load face data and names
-        try:
-            with open(names_path, 'rb') as f:
-                names = pickle.load(f)
-            
-            with open(faces_path, 'rb') as f:
-                faces = pickle.load(f)
-        except Exception as e:
-            print(f"Error loading face data: {e}")
-            return {"success": False, "error": f"Error loading face data: {e}"}
-        
-        if len(names) == 0 or len(faces) == 0:
-            print("Error: No face data found. Please collect face samples first.")
-            return {"success": False, "error": "No face data found"}
-        
-        # Get the feature dimensions from the training data
-        feature_count = faces.shape[1]
-        print(f"Loaded training data with {feature_count} features")
-        
-        # Train KNN classifier
-        knn = KNeighborsClassifier(n_neighbors=5)
-        knn.fit(faces, names)
-        
-        # If frame_data is provided, use it instead of webcam
-        if frame_data is not None:
-            try:
-                # Process the provided frame
-                return process_frame_for_recognition(frame_data, knn, feature_count)
-            except Exception as e:
-                print(f"Error processing frame: {e}")
-                return {"success": False, "error": f"Error processing frame: {e}"}
-        
-        # If no frame data provided, this function can be called to begin interactive webcam recognition
-        # (Note: This part would not typically be used via Eel, but kept for backward compatibility)
-        print("No frame data provided, starting webcam recognition")
-        
-        # Initialize face detector
-        face_detector = cv2.CascadeClassifier(cascade_path)
-        if face_detector.empty():
-            print("Error: Failed to load face detector model.")
-            return {"success": False, "error": "Failed to load face detector model"}
-        
-        # Initialize video capture
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            print("Error: Could not open camera.")
-            return {"success": False, "error": "Could not open camera"}
-        
-        print("\nStarting face recognition. Press 'q' to quit.")
-        
-        try:
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    print("Error: Failed to grab frame from camera.")
-                    break
-                
-                # Create copy for display
-                display_frame = frame.copy()
-                
-                # Convert to grayscale
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                
-                # Detect faces
-                faces_rect = face_detector.detectMultiScale(
-                    gray, 
-                    scaleFactor=1.1, 
-                    minNeighbors=5,
-                    minSize=(30, 30)
-                )
-                
-                # Process the largest face only
-                largest_face = get_largest_face(faces_rect)
-                
-                if largest_face is not None:
-                    # Similar code to process_frame_for_recognition but for display
-                    x, y, w, h = largest_face
-                    
-                    # Extract face region with margin
-                    margin = int(0.2 * w)
-                    y1 = max(0, y - margin)
-                    y2 = min(frame.shape[0], y + h + margin)
-                    x1 = max(0, x - margin)
-                    x2 = min(frame.shape[1], x + w + margin)
-                    
-                    try:
-                        face_img = frame[y1:y2, x1:x2]
-                        face_size = 100
-                        resized_face = cv2.resize(face_img, (face_size, face_size))
-                        flattened_face = resized_face.reshape(1, -1)
-                        
-                        # Make sure dimensions match
-                        if flattened_face.shape[1] > feature_count:
-                            flattened_face = flattened_face[:, :feature_count]
-                        elif flattened_face.shape[1] < feature_count:
-                            # Pad with zeros if too small
-                            padding = np.zeros((1, feature_count - flattened_face.shape[1]))
-                            flattened_face = np.concatenate((flattened_face, padding), axis=1)
-                            
-                        # Get prediction and probability
-                        user_name = knn.predict(flattened_face)[0]
-                        probs = knn.predict_proba(flattened_face)[0]
-                        
-                        # Get the highest probability and convert to percentage
-                        user_prob = np.max(probs) * 100
-                        
-                        # Display the result
-                        result_text = f"{user_name} ({user_prob:.1f}%)"
-                        
-                        # Determine color based on confidence
-                        if user_prob >= 80:
-                            color = (0, 255, 0)  # Green for high confidence
-                        elif user_prob >= 50:
-                            color = (0, 255, 255)  # Yellow for medium confidence
-                        else:
-                            color = (0, 0, 255)  # Red for low confidence
-                        
-                        # Draw rectangle and name
-                        cv2.rectangle(display_frame, (x1, y1), (x2, y2), color, 2)
-                        cv2.putText(display_frame, result_text, (x1, y1 - 10), 
-                                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-                    except Exception as e:
-                        print(f"Error processing face: {e}")
-                        cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-                        cv2.putText(display_frame, "Error processing face", (x1, y1 - 10),
-                                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                else:
-                    # No face detected
-                    cv2.putText(display_frame, "No face detected", (10, 50), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                
-                # Add instructions
-                cv2.putText(display_frame, "Press 'q' to quit", (10, 30), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                
-                # Show the frame
-                cv2.imshow("Face Recognition", display_frame)
-                
-                # Check for quit key
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-        
-        except Exception as e:
-            print(f"Error during face recognition: {e}")
-            return {"success": False, "error": f"Error during face recognition: {e}"}
-        
-        finally:
-            # Clean up
-            cap.release()
-            cv2.destroyAllWindows()
-            return {"success": True, "message": "Face recognition completed"}
-            
-    except Exception as e:
-        print(f"General error in face recognition: {e}")
-        return {"success": False, "error": f"General error in face recognition: {e}"}
+    # Also save to XML format
+    save_to_xml(username, face_data)
 
-def process_frame_for_recognition(frame_data, knn, feature_count):
-    """Process a single frame for face recognition."""
+def save_to_xml(username, face_data):
+    """Save employee data to XML format for better integration with web apps"""
     try:
-        # Convert base64 to image if needed
-        if isinstance(frame_data, str) and frame_data.startswith('data:image'):
-            frame_data = frame_data.split(',')[1]
-            
-            # Convert base64 to image
-            import base64
-            from io import BytesIO
-            
-            image_bytes = base64.b64decode(frame_data)
-            
-            # Convert to OpenCV format
-            nparr = np.frombuffer(image_bytes, np.uint8)
-            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        else:
-            return {"success": False, "error": "Invalid image data format"}
+        import xml.etree.ElementTree as ET
+        from xml.dom import minidom
         
-        if frame is None:
-            return {"success": False, "error": "Failed to decode image"}
-        
-        # Load face detector
-        face_detector = cv2.CascadeClassifier(cascade_path)
-        if face_detector.empty():
-            return {"success": False, "error": "Failed to load face detector"}
-        
-        # Convert to grayscale
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        
-        # Detect faces
-        faces_rect = face_detector.detectMultiScale(
-            gray, 
-            scaleFactor=1.1, 
-            minNeighbors=5,
-            minSize=(30, 30)
-        )
-        
-        # Get the largest face
-        largest_face = get_largest_face(faces_rect)
-        
-        if largest_face is None:
-            return {"success": True, "detected": False, "message": "No face detected in image"}
-        
-        x, y, w, h = largest_face
-        
-        # Extract face region with margin
-        margin = int(0.2 * w)
-        y1 = max(0, y - margin)
-        y2 = min(frame.shape[0], y + h + margin)
-        x1 = max(0, x - margin)
-        x2 = min(frame.shape[1], x + w + margin)
-        
-        face_img = frame[y1:y2, x1:x2]
-        face_size = 100
-        resized_face = cv2.resize(face_img, (face_size, face_size))
-        flattened_face = resized_face.reshape(1, -1)
-        
-        # Make sure dimensions match the training data
-        if flattened_face.shape[1] > feature_count:
-            flattened_face = flattened_face[:, :feature_count]
-        elif flattened_face.shape[1] < feature_count:
-            # Pad with zeros if too small
-            padding = np.zeros((1, feature_count - flattened_face.shape[1]))
-            flattened_face = np.concatenate((flattened_face, padding), axis=1)
-            
-        # Get prediction and probability
-        user_name = knn.predict(flattened_face)[0]
-        probs = knn.predict_proba(flattened_face)[0]
-        
-        # Get the highest probability
-        user_prob = np.max(probs)
-        
-        # Check confidence threshold
-        if user_prob < 0.6:  # 60% confidence threshold
-            return {"success": True, "detected": True, "recognized": False, "message": "Face detected but confidence too low"}
-        
-        # Look up employee details
-        # This is a placeholder - in a real application you would look up details from a database
-        user_details = get_employee_details(user_name)
-        
-        # Record the recognition event
-        record_recognition_event(user_name)
-        
-        return {
-            "success": True,
-            "detected": True,
-            "recognized": True,
-            "person": {
-                "name": user_name,
-                "confidence": float(user_prob),
-                "details": user_details
-            }
-        }
-        
-    except Exception as e:
-        print(f"Error in process_frame_for_recognition: {e}")
-        return {"success": False, "error": str(e)}
-
-def get_employee_details(username):
-    """Get employee details from employee records."""
-    try:
-        # Check if employees.xml exists
-        employee_file = os.path.join('data', 'employees.xml')
-        if os.path.exists(employee_file):
-            import xml.etree.ElementTree as ET
-            tree = ET.parse(employee_file)
-            root = tree.getroot()
-            
-            for employee in root.findall('./employee'):
-                name_elem = employee.find('name')
-                if name_elem is not None and name_elem.text == username:
-                    # Found matching employee
-                    details = {}
-                    
-                    for field in ['department', 'position', 'email']:
-                        field_elem = employee.find(field)
-                        if field_elem is not None:
-                            details[field] = field_elem.text
-                    
-                    return details
-        
-        # If no match or no file, return empty details
-        return {}
-    except Exception as e:
-        print(f"Error getting employee details: {e}")
-        return {}
-
-def record_recognition_event(username):
-    """Record a recognition event."""
-    try:
         # Create data directory if it doesn't exist
         data_dir = 'data'
         os.makedirs(data_dir, exist_ok=True)
         
-        # Create or update attendance.xml
-        attendance_file = os.path.join(data_dir, 'attendance.xml')
+        # Path for employees.xml
+        employees_file = os.path.join(data_dir, 'employees.xml')
         
-        import xml.etree.ElementTree as ET
-        
-        if not os.path.exists(attendance_file):
-            # Create new file
-            root = ET.Element("attendance_records")
-            tree = ET.ElementTree(root)
-        else:
+        # Check if file exists
+        if os.path.exists(employees_file):
             # Load existing file
-            tree = ET.parse(attendance_file)
+            tree = ET.parse(employees_file)
             root = tree.getroot()
+        else:
+            # Create new file structure
+            root = ET.Element('employees')
+            tree = ET.ElementTree(root)
         
-        # Add new record
-        record = ET.SubElement(root, "record")
-        ET.SubElement(record, "employeeName").text = username
-        ET.SubElement(record, "timestamp").text = datetime.now().isoformat()
-        ET.SubElement(record, "type").text = "IN"  # Could be more sophisticated with IN/OUT logic
+        # Check if this employee already exists
+        existing_employee = None
+        for employee in root.findall('./employee'):
+            if employee.find('name').text == username:
+                existing_employee = employee
+                break
         
-        # Save the file
-        tree.write(attendance_file)
+        # If employee doesn't exist, create a new entry
+        if existing_employee is None:
+            employee = ET.SubElement(root, 'employee')
+            ET.SubElement(employee, 'name').text = username
+            ET.SubElement(employee, 'department').text = 'Not Specified'
+            ET.SubElement(employee, 'position').text = 'Not Specified'
+            ET.SubElement(employee, 'email').text = f"{username.lower().replace(' ', '.')}@example.com"
+            ET.SubElement(employee, 'face_samples').text = str(len(face_data))
+            ET.SubElement(employee, 'enrollment_date').text = datetime.now().isoformat()
+        else:
+            # Just update the face samples count
+            samples_element = existing_employee.find('face_samples')
+            if samples_element is not None:
+                samples_element.text = str(int(samples_element.text) + len(face_data))
+            else:
+                ET.SubElement(existing_employee, 'face_samples').text = str(len(face_data))
         
-        print(f"Recorded recognition event for {username}")
+        # Save with pretty formatting
+        xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(indent="   ")
+        with open(employees_file, "w") as f:
+            f.write(xmlstr)
+            
+        print(f"Saved employee data to {employees_file}")
         return True
     except Exception as e:
-        print(f"Error recording recognition event: {e}")
+        print(f"Error saving to XML: {e}")
         return False
-
-# Expose functions to JavaScript via Eel
-@eel.expose
-def eel_recognize_face(image_data):
-    """Recognize a face via Eel"""
-    return recognize_face(image_data)
-
-if __name__ == "__main__":
-    # If running directly, prompt for username and collect samples
-    if len(sys.argv) > 1:
-        username = sys.argv[1]
-        print(f"Starting face sample collection for {username}")
-        collect_face_samples(username)
-    else:
-        # Show menu when run directly (not via Eel)
-        print(f"\n{'='*60}")
-        print("FACE RECOGNITION SYSTEM")
-        print(f"{'='*60}")
-        username = input("Enter username for face enrollment: ")
-        if username.strip():
-            collect_face_samples(username)
-        else:
-            print("Username cannot be empty.")

@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Enrollment - FaceTrack</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FaceTrack</h1>
+            <div class="theme-toggle">
+                <button id="theme-toggle-btn">🌙</button>
+            </div>
+        </header>
+        
+        <main>
+            <div class="enrollment-container">
+                <h2>Face Enrollment</h2>
+                <div id="employee-info" class="employee-info">
+                    <div class="info-item"><span>Name:</span> <span id="employee-name">Loading...</span></div>
+                    <div class="info-item"><span>Department:</span> <span id="employee-department">Loading...</span></div>
+                    <div class="info-item"><span>Position:</span> <span id="employee-position">Loading...</span></div>
+                </div>
+                
+                <div class="camera-container">
+                    <video id="video" autoplay playsinline></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div id="enrollment-status" class="enrollment-status">Preparing camera...</div>
+                    <div id="directions-prompt" class="directions-prompt">Position your face in the frame</div>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>Progress:</span>
+                        <span id="progress-text">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="camera-controls">
+                    <button id="start-enrollment" class="primary-btn">Start Enrollment</button>
+                    <button id="stop-enrollment" class="secondary-btn" style="display: none;">Cancel</button>
+                </div>
+                
+                <div id="enrollment-result" class="enrollment-result" style="display: none;">
+                    <div id="enrollment-success" style="display: none;">
+                        <div class="success-icon">✓</div>
+                        <h3>Enrollment Successful</h3>
+                        <div id="sample-count" class="sample-count"></div>
+                        <p>You can now close this window and return to the main application.</p>
+                    </div>
+                    <div id="enrollment-failure" style="display: none;">
+                        <div class="failure-icon">✗</div>
+                        <h3>Enrollment Failed</h3>
+                        <p id="failure-reason">An error occurred during enrollment.</p>
+                        <button id="retry-enrollment" class="primary-btn">Try Again</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>&copy; 2025 FaceTrack - Face Recognition Attendance System</p>
+        </footer>
+    </div>
+
+    <script src="/eel.js"></script>
+    <script src="main.js"></script>
+    <script src="enroll_face.js"></script>
+</body>
+</html>
