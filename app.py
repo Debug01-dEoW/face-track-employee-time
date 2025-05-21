@@ -33,11 +33,16 @@ def search_employees(search_term, department_filter, face_data_filter):
     # For our simple app, we'll just return success since filtering is done client-side
     return {"success": True}
 
+@eel.expose
+def eel_recognize_face(image_data):
+    """Expose the face recognition function to JavaScript"""
+    return web.face_recognition.eel_recognize_face(image_data)
+
 if __name__ == '__main__':
     try:
         # Start the Eel application
         print("Starting Face Recognition System...")
-        print("Web interface available at: http://localhost:8000/checkin.html")
+        print("Web interface available at: http://localhost:8000/index.html")
         
         # Check if there's a command to run a specific function
         if len(sys.argv) > 1:
@@ -52,7 +57,16 @@ if __name__ == '__main__':
                 sys.exit(0)
         
         # Otherwise, start the web interface
-        eel.start('index.html', size=(1200, 800), port=8000)
+        # Use 'chrome' as default mode, fallback to 'default'
+        try:
+            eel.start('index.html', mode='chrome', size=(1200, 800), port=8000)
+        except eel.browsers.NoBrowser:
+            try:
+                eel.start('index.html', mode='default', size=(1200, 800), port=8000)
+            except Exception as e:
+                print(f"Failed to start browser: {e}")
+                eel.start('index.html', mode=None, size=(1200, 800), port=8000)
+                print("No browser mode. Please visit http://localhost:8000/index.html in your browser.")
     except KeyboardInterrupt:
         print("\nShutting down...")
     except Exception as e:

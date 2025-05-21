@@ -114,8 +114,10 @@ function recognizeFace() {
     recognitionActive = false;
     document.getElementById('take-snapshot').disabled = false;
     
-    if (!response.success) {
-      document.getElementById('recognition-status').textContent = `Error: ${response.error}`;
+    console.log("Face recognition response:", response);
+    
+    if (!response || !response.success) {
+      document.getElementById('recognition-status').textContent = `Error: ${response ? response.error : 'Unknown error'}`;
       return;
     }
     

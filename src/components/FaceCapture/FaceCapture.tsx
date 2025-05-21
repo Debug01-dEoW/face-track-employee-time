@@ -3,9 +3,8 @@ import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Camera, RefreshCw, User, Server, AlertTriangle } from 'lucide-react';
-import { recognizeFace, checkServiceAvailability } from '@/services/FaceRecognitionService';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Camera, RefreshCw, User } from 'lucide-react';
+import { findEmployeeByFace } from '@/services/FaceDatabase';
 
 interface FaceCaptureProps {
   onCapture: (imageSrc: string, recognizedPerson?: { id: string, name: string } | null) => void;
@@ -17,23 +16,6 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isCaptured, setIsCaptured] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [serverAvailable, setServerAvailable] = useState<boolean | null>(null);
-
-  // Check if Python backend is available
-  useEffect(() => {
-    const checkServer = async () => {
-      const isAvailable = await checkServiceAvailability();
-      setServerAvailable(isAvailable);
-      
-      if (isAvailable) {
-        console.log("Connected to Python face recognition server");
-      } else {
-        console.log("Python face recognition server not available");
-      }
-    };
-    
-    checkServer();
-  }, []);
 
   useEffect(() => {
     return () => {
@@ -93,10 +75,19 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
         // Convert to data URL
         const imageSrc = canvas.toDataURL('image/jpeg', 0.9);
         
-        // Send to backend for recognition
-        const recognitionResult = await recognizeFace(imageSrc);
+        // Process using local face recognition
+        const recognizedPerson = await findEmployeeByFace(imageSrc);
         
-        onCapture(imageSrc, recognitionResult);
+        // Pass the image and recognition result to the parent component
+        if (recognizedPerson) {
+          onCapture(imageSrc, {
+            id: recognizedPerson.employeeId.toString(),
+            name: recognizedPerson.employeeName
+          });
+        } else {
+          onCapture(imageSrc, null);
+        }
+        
         setIsCaptured(true);
         
         // Stop camera stream
@@ -106,8 +97,8 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
         
         setIsStreaming(false);
         
-        if (recognitionResult) {
-          toast.success(`Identified as ${recognitionResult.name}`);
+        if (recognizedPerson) {
+          toast.success(`Identified as ${recognizedPerson.employeeName}`);
         } else {
           toast.info('Face was not recognized in our system');
         }
@@ -133,24 +124,6 @@ const FaceCapture = ({ onCapture }: FaceCaptureProps) => {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0 relative">
-        {serverAvailable === false && (
-          <Alert variant="destructive" className="m-3">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              Face recognition server is not available. Using local fallback mode.
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {serverAvailable === true && (
-          <Alert variant="default" className="bg-green-50 border-green-200 text-green-800 m-3">
-            <Server className="h-4 w-4" />
-            <AlertDescription>
-              Using Python-powered face recognition for high accuracy.
-            </AlertDescription>
-          </Alert>
-        )}
-        
         {!isStreaming && !isCaptured && (
           <div className="h-80 flex flex-col items-center justify-center p-6 bg-gray-100 dark:bg-gray-800">
             <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">

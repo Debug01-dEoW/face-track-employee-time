@@ -26,38 +26,29 @@
         </nav>
         
         <main>
-            <div class="dashboard">
-                <h2>Dashboard</h2>
+            <div class="welcome-screen">
+                <h2>Welcome to FaceTrack</h2>
+                <p>Facial recognition-based attendance management system</p>
                 
-                <div class="stats-container">
-                    <div class="stat-card">
-                        <h3>Total Employees</h3>
-                        <div class="stat-value" id="total-employees">0</div>
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <div class="card-icon">👥</div>
+                        <h3>Employees</h3>
+                        <p>Manage employee profiles and face data</p>
+                        <a href="employees.html" class="btn">Manage Employees</a>
                     </div>
-                    <div class="stat-card">
-                        <h3>Today's Check-ins</h3>
-                        <div class="stat-value" id="today-checkins">0</div>
+                    <div class="card">
+                        <div class="card-icon">📊</div>
+                        <h3>Attendance</h3>
+                        <p>View and manage attendance records</p>
+                        <a href="attendance.html" class="btn">View Attendance</a>
                     </div>
-                    <div class="stat-card">
-                        <h3>Total Attendance Records</h3>
-                        <div class="stat-value" id="total-attendance">0</div>
+                    <div class="card">
+                        <div class="card-icon">📷</div>
+                        <h3>Check-In</h3>
+                        <p>Mark attendance using face recognition</p>
+                        <a href="checkin.html" class="btn primary-btn">Check In Now</a>
                     </div>
-                </div>
-                
-                <div class="recent-activity">
-                    <h3>Recent Activity</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Time</th>
-                                <th>Type</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recent-activity-table">
-                            <!-- Activity will be populated via JavaScript -->
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </main>
@@ -66,14 +57,33 @@
             <p>&copy; 2025 FaceTrack - Face Recognition Attendance System</p>
         </footer>
     </div>
-
+    
     <script src="/eel.js"></script>
     <script src="main.js"></script>
     <script>
-        // Initialize dashboard
-        document.addEventListener("DOMContentLoaded", function() {
-            loadDashboardStats();
-            setInterval(loadDashboardStats, 30000); // Refresh every 30 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up theme toggle
+            const themeToggleBtn = document.getElementById('theme-toggle-btn');
+            if (themeToggleBtn) {
+                themeToggleBtn.addEventListener('click', function() {
+                    document.body.classList.toggle('light-theme');
+                    
+                    if (document.body.classList.contains('light-theme')) {
+                        themeToggleBtn.textContent = '☀️';
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        themeToggleBtn.textContent = '🌙';
+                        localStorage.setItem('theme', 'dark');
+                    }
+                });
+                
+                // Check saved theme
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme === 'light') {
+                    document.body.classList.add('light-theme');
+                    themeToggleBtn.textContent = '☀️';
+                }
+            }
         });
     </script>
 </body>
