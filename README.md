@@ -20,7 +20,9 @@ FaceTrack is a web-based attendance tracking system that uses facial recognition
 
 ### Backend (Python)
 - Flask for the REST API
+- Eel for database operations
 - face_recognition library (based on dlib)
+- SQLite database for local storage
 - NumPy for numerical operations
 - Pillow for image processing
 
@@ -29,7 +31,7 @@ FaceTrack is a web-based attendance tracking system that uses facial recognition
 ### Prerequisites
 - Node.js (v18+)
 - Python 3.7+ (for the face recognition backend)
-- Supabase account (for database and authentication)
+- Supabase account (for cloud storage and authentication)
 
 ### Frontend Setup
 1. Clone the repository
@@ -43,9 +45,20 @@ FaceTrack is a web-based attendance tracking system that uses facial recognition
    ```
 
 ### Python Face Recognition Backend Setup
-1. Install the required Python libraries:
+1. Create a Python virtual environment (recommended):
    ```
-   pip install flask face_recognition numpy Pillow flask-cors
+   python -m venv venv
+   
+   # On Windows
+   venv\Scripts\activate
+   
+   # On macOS/Linux
+   source venv/bin/activate
+   ```
+
+2. Install the required Python libraries:
+   ```
+   pip install flask face_recognition numpy Pillow flask-cors eel sqlite3
    ```
    
    **Note:** Installing the face_recognition library may require some additional steps on certain operating systems. 
@@ -70,12 +83,13 @@ FaceTrack is a web-based attendance tracking system that uses facial recognition
    pip install face_recognition
    ```
 
-2. Run the Python face recognition server:
+3. Run the Python face recognition server:
    ```
    python face_recognition_server.py
    ```
 
-3. The server will run on http://localhost:5000 by default
+4. The server will run on http://localhost:5000 by default
+   The Eel web interface will run on http://localhost:8000
 
 ### Browser Compatibility
 For the best face recognition experience:
@@ -93,14 +107,35 @@ For the best face recognition experience:
 - The React frontend handles UI and user interactions
 - The Python backend processes face recognition tasks
 - Communication happens via RESTful API calls
-- Both local storage and server storage are used for redundancy
+- SQLite database stores employee data, face encodings, and attendance records
+- Eel provides a bridge between Python and JavaScript
+
+## Database Structure
+1. **employees** table:
+   - id: Employee ID (primary key)
+   - name: Employee name
+   - department: Department
+   - position: Position
+   - created_at: Timestamp
+
+2. **face_encodings** table:
+   - id: Auto-incrementing ID (primary key)
+   - employee_id: Foreign key to employees table
+   - encoding: Face encoding data (BLOB)
+   - created_at: Timestamp
+
+3. **attendance** table:
+   - id: Auto-incrementing ID (primary key)
+   - employee_id: Foreign key to employees table
+   - timestamp: Check-in/out timestamp
+   - type: Attendance type (IN/OUT)
 
 ## Development Notes
 - The frontend automatically falls back to local mode if the Python backend is unavailable
-- The Python backend stores face encodings in a JSON file for persistence
+- The Python backend stores face encodings in both SQLite and a JSON file for redundancy
 
 ## Troubleshooting
 - If the Python server cannot start, ensure all dependencies are installed correctly
 - If face recognition is not working, check that the server is running and accessible
 - For camera issues, ensure browser permissions are granted
-- Check browser console logs for any errors
+- Check browser console logs and Python server logs for any errors

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Camera, RefreshCw, AlertTriangle, Server } from "lucide-react";
+import { Camera, RefreshCw, AlertTriangle, Server, Database } from "lucide-react";
 import CameraView from "./face/CameraView";
 import ProgressIndicator from "./face/ProgressIndicator";
 import EnrollmentInstructions from "./face/EnrollmentInstructions";
@@ -14,11 +14,20 @@ import { toast } from "sonner";
 interface FaceEnrollmentProps {
   employeeId: number;
   employeeName: string;
+  department?: string;
+  position?: string;
   onComplete: (faceData: string) => void;
   onCancel: () => void;
 }
 
-const FaceEnrollment = ({ employeeId, employeeName, onComplete, onCancel }: FaceEnrollmentProps) => {
+const FaceEnrollment = ({ 
+  employeeId, 
+  employeeName, 
+  department = "", 
+  position = "", 
+  onComplete, 
+  onCancel 
+}: FaceEnrollmentProps) => {
   const [serverAvailable, setServerAvailable] = useState<boolean | null>(null);
   
   // Check service availability on component mount
@@ -29,7 +38,7 @@ const FaceEnrollment = ({ employeeId, employeeName, onComplete, onCancel }: Face
       
       if (!isAvailable) {
         toast.error("Face recognition server is not available", {
-          description: "Please make sure the Python backend is running"
+          description: "Using local fallback mode with limited recognition"
         });
       } else {
         toast.success("Connected to face recognition server");
@@ -43,7 +52,7 @@ const FaceEnrollment = ({ employeeId, employeeName, onComplete, onCancel }: Face
     try {
       // First try to enroll with the Python backend
       if (serverAvailable) {
-        const success = await enrollFace(employeeId, employeeName, faceData);
+        const success = await enrollFace(employeeId, employeeName, faceData, department, position);
         
         if (success) {
           toast.success("Face data successfully enrolled with recognition server");
@@ -90,10 +99,10 @@ const FaceEnrollment = ({ employeeId, employeeName, onComplete, onCancel }: Face
         )}
         
         {serverAvailable === true && (
-          <Alert variant="default" className="bg-green-50 border-green-200 text-green-800">
-            <Server className="h-4 w-4" />
+          <Alert variant="default" className="bg-green-50 border-green-200 text-green-800 dark:bg-green-900 dark:border-green-800 dark:text-green-100">
+            <Database className="h-4 w-4" />
             <AlertDescription>
-              Connected to Python face recognition server for high-accuracy processing.
+              Connected to Python database with Eel for high-accuracy processing.
             </AlertDescription>
           </Alert>
         )}

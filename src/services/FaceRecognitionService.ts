@@ -20,6 +20,12 @@ interface EnrollmentResponse {
   error?: string;
 }
 
+interface StatsResponse {
+  totalEmployees: number;
+  totalSamples: number;
+  totalAttendance: number;
+}
+
 /**
  * Recognizes a face from an image
  * @param imageData Base64 encoded image data
@@ -64,9 +70,17 @@ export const recognizeFace = async (imageData: string): Promise<{ id: string, na
  * @param employeeId Employee ID
  * @param employeeName Employee name
  * @param faceData JSON string containing face samples
+ * @param department Employee department (optional)
+ * @param position Employee position (optional)
  * @returns Success status
  */
-export const enrollFace = async (employeeId: number, employeeName: string, faceData: string): Promise<boolean> => {
+export const enrollFace = async (
+  employeeId: number, 
+  employeeName: string, 
+  faceData: string,
+  department: string = "",
+  position: string = ""
+): Promise<boolean> => {
   try {
     // Parse the face data to extract the samples
     const parsedData = JSON.parse(faceData);
@@ -79,7 +93,9 @@ export const enrollFace = async (employeeId: number, employeeName: string, faceD
       body: JSON.stringify({
         employeeId,
         employeeName,
-        faceSamples: parsedData.samples
+        faceSamples: parsedData.samples,
+        department,
+        position
       }),
     });
 
@@ -122,9 +138,9 @@ export const checkServiceAvailability = async (): Promise<boolean> => {
 };
 
 /**
- * Gets statistics about enrolled faces
+ * Gets statistics about enrolled faces and attendance
  */
-export const getFaceStatistics = async (): Promise<{totalEmployees: number, totalSamples: number} | null> => {
+export const getFaceStatistics = async (): Promise<StatsResponse | null> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/stats`, {
       method: 'GET',
@@ -145,5 +161,81 @@ export const getFaceStatistics = async (): Promise<{totalEmployees: number, tota
   } catch (error) {
     console.error('Error fetching face statistics:', error);
     return null;
+  }
+};
+
+/**
+ * Gets all employees with their face enrollment status
+ */
+export const getEmployees = async (): Promise<any[] | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/employees`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(2000)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    if (result.success) {
+      return result.employees;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching employees:', error);
+    return null;
+  }
+};
+
+/**
+ * Gets attendance records
+ */
+export const getAttendanceRecords = async (): Promise<any[] | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/attendance`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(2000)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    if (result.success) {
+      return result.records;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching attendance records:', error);
+    return null;
+  }
+};
+
+/**
+ * Deletes an employee and their face data
+ */
+export const deleteEmployee = async (employeeId: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/employees/${employeeId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    return result.success;
+  } catch (error) {
+    console.error('Error deleting employee:', error);
+    return false;
   }
 };
