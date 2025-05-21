@@ -12,9 +12,7 @@ const Index = () => {
                 Login
               </Button>
             </Link>
-            <Button className="bg-brand-600 hover:bg-brand-700">
-              Request Demo
-            </Button>
+            
           </div>
         </div>
       </nav>
